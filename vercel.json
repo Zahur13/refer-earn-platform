@@ -35,7 +35,6 @@
       "dest": "/index.html"
     }
   ],
-
   "env": {
     "REACT_APP_FIREBASE_API_KEY": "@firebase-api-key",
     "REACT_APP_FIREBASE_AUTH_DOMAIN": "@firebase-auth-domain",
