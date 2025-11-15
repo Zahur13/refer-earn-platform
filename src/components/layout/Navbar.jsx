@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Menu, X, Wallet, User, Settings } from "lucide-react";
+import { LogOut, Menu, X, Wallet } from "lucide-react";
 import { formatCurrency } from "../../utils/helpers";
 import toast from "react-hot-toast";
 import NotificationBell from "../shared/NotificationBell";
@@ -53,6 +53,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
 
           {/* Right Section */}
           <div className="flex items-center space-x-4">
+            {/* Wallet Balance (User Only) */}
             {!isAdmin && (
               <div className="hidden items-center px-4 py-2 bg-green-50 rounded-lg border border-green-200 md:flex">
                 <Wallet className="mr-2 w-5 h-5 text-green-600" />
@@ -64,59 +65,52 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 </div>
               </div>
             )}
-            <div className="flex items-center space-x-4">
-              {!isAdmin && (
-                <div className="hidden items-center px-4 py-2 bg-green-50 rounded-lg border md:flex border-green-200-200">
-                  {/* Notification Bell */}
-                  <NotificationBell />
+
+            {/* ✅ Notification Bell */}
+            <NotificationBell />
+
+            {/* User Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center p-2 space-x-2 rounded-lg hover:bg-gray-100"
+              >
+                <div className="flex justify-center items-center w-10 h-10 font-semibold text-white rounded-full bg-primary-600">
+                  {userData?.name?.charAt(0).toUpperCase()}
                 </div>
-              )}
+                <div className="hidden text-left md:block">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {userData?.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {isAdmin ? "Admin" : "User"}
+                  </p>
+                </div>
+              </button>
 
-              {/* User Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center p-2 space-x-2 rounded-lg hover:bg-gray-100"
-                >
-                  <div className="flex justify-center items-center w-10 h-10 font-semibold text-white rounded-full bg-primary-600">
-                    {userData?.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="hidden text-left md:block">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {userData?.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {isAdmin ? "Admin" : "User"}
-                    </p>
-                  </div>
-                </button>
-
-                {dropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setDropdownOpen(false)}
-                    ></div>
-                    <div className="absolute right-0 z-20 py-2 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-xl">
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {userData?.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {userData?.email}
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center px-4 py-2 space-x-2 w-full text-sm text-left text-red-600 hover:bg-red-50"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
+              {dropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setDropdownOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 z-20 py-2 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-xl">
+                    <div className="px-4 py-2 border-b border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {userData?.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{userData?.email}</p>
                     </div>
-                  </>
-                )}
-              </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center px-4 py-2 space-x-2 w-full text-sm text-left text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

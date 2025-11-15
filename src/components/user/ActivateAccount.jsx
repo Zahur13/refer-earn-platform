@@ -57,8 +57,8 @@ const ActivateAccount = () => {
 
     try {
       console.log("🚀 Submitting activation request...");
-      console.log("User ID:", userData.id);
-      console.log("UTR:", utrNumber);
+      // console.log("User ID:", userData.id);
+      // console.log("UTR:", utrNumber);
 
       // ✅ Call Vercel API
       const result = await submitActivationRequest(utrNumber.toUpperCase());

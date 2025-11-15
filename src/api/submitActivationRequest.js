@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
     const { utrNumber } = req.body;
 
-    console.log("📝 Activation request received:", { userId, utrNumber });
+    // console.log("📝 Activation request received:", { userId, utrNumber });
 
     // Validate UTR
     if (!utrNumber || utrNumber.length < 12) {
@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
     }
 
     const userData = userDoc.data();
-    console.log("✅ User found:", userData.name);
+    // console.log("✅ User found:", userData.name);
 
     // Check if already activated
     if (userData.isReferralActive) {
@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
           .doc(userData.referrerId)
           .get();
         referrerName = referrerDoc.exists ? referrerDoc.data().name : null;
-        console.log("✅ Referrer found:", referrerName);
+        // console.log("✅ Referrer found:", referrerName);
       } catch (err) {
         console.error("⚠️ Error fetching referrer:", err);
       }
@@ -105,12 +105,12 @@ module.exports = async (req, res) => {
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    console.log("📄 Creating activation request:", activationData);
+    // console.log("📄 Creating activation request:", activationData);
 
     const docRef = await db
       .collection("activationRequests")
       .add(activationData);
-    console.log("✅ Activation request created with ID:", docRef.id);
+    // console.log("✅ Activation request created with ID:", docRef.id);
 
     // Send notification to user
     try {

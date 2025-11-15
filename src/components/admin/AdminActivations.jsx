@@ -46,7 +46,6 @@ const AdminActivations = () => {
       }));
 
       console.log("✅ Fetched activation requests:", data.length);
-      console.log("Requests:", data);
 
       setActivationRequests(data);
     } catch (error) {
