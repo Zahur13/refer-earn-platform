@@ -17,7 +17,6 @@
 # Environment Variables - NEVER COMMIT THESE!
 .env
 .env.local
-.env.example
 .env.development
 .env.development.local
 .env.test
@@ -32,9 +31,6 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Vercel
-.vercel
-.vercel.json
 
 # IDE
 .idea/
@@ -56,3 +52,10 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Functions
+functions/node_modules
+functions/.env
+
+
+serviceAccountKey.json

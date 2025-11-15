@@ -11,37 +11,19 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
       "src": "/static/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
       "dest": "/static/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/favicon.ico"
-    },
-    {
-      "src": "/logo(.*)",
-      "dest": "/logo$1"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
     },
     {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "REACT_APP_FIREBASE_API_KEY": "@firebase-api-key",
-    "REACT_APP_FIREBASE_AUTH_DOMAIN": "@firebase-auth-domain",
-    "REACT_APP_FIREBASE_PROJECT_ID": "@firebase-project-id",
-    "REACT_APP_FIREBASE_STORAGE_BUCKET": "@firebase-storage-bucket",
-    "REACT_APP_FIREBASE_MESSAGING_SENDER_ID": "@firebase-messaging-sender-id",
-    "REACT_APP_FIREBASE_APP_ID": "@firebase-app-id",
-    "REACT_APP_ENCRYPTION_KEY": "@encryption-key"
-  }
+  ]
 }

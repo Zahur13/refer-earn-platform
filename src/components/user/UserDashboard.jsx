@@ -124,8 +124,8 @@ const UserDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex justify-center items-center h-96">
+        <div className="w-12 h-12 rounded-full border-b-2 animate-spin border-primary-600"></div>
       </div>
     );
   }
@@ -136,15 +136,15 @@ const UserDashboard = () => {
       <WelcomeBanner />
 
       {/* Welcome Section */}
-      <div className="card bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+      <div className="text-white bg-gradient-to-r card from-primary-600 to-primary-700">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="mb-2 text-3xl font-bold">
               Welcome, {userData?.name}!
             </h1>
             <p className="text-primary-100">Here's your earnings overview</p>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+          <div className="px-4 py-2 rounded-lg backdrop-blur-sm bg-white/20">
             <p className="text-xs text-primary-100">Account Status</p>
             <p className="text-sm font-semibold">
               {userData?.isReferralActive
@@ -155,27 +155,22 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      <div className="card bg-gradient-to-r from-primary-600 to-primary-700 text-white">
-        {/* ... existing code ... */}
-      </div>
-
-      {/* Activation Notice - UPDATE THIS */}
       {!userData?.isReferralActive && (
-        <div className="card bg-yellow-50 border-yellow-200">
+        <div className="bg-yellow-50 border-yellow-200 card">
           <div className="flex items-start space-x-3">
-            <div className="bg-yellow-100 p-2 rounded-lg">
-              <Gift className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Gift className="w-6 h-6 text-yellow-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-yellow-900 mb-1">
+              <h3 className="mb-1 font-semibold text-yellow-900">
                 Activate Your Referral Account
               </h3>
-              <p className="text-sm text-yellow-700 mb-3">
+              <p className="mb-3 text-sm text-yellow-700">
                 Pay ₹20 via UPI to unlock referral features and start earning!
               </p>
               <button
                 onClick={() => navigate("/user/activate")}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                className="px-4 py-2 text-sm font-semibold text-white bg-yellow-600 rounded-lg transition hover:bg-yellow-700"
               >
                 Activate Now via UPI
               </button>
@@ -185,54 +180,54 @@ const UserDashboard = () => {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Wallet Balance */}
-        <div className="card hover:shadow-xl transition">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-green-100 p-3 rounded-lg">
-              <Wallet className="h-6 w-6 text-green-600" />
+        <div className="transition card hover:shadow-xl">
+          <div className="flex justify-between items-center mb-4">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <Wallet className="w-6 h-6 text-green-600" />
             </div>
             {/* <Link
               to="/user/add-money"
-              className="text-sm text-primary-600 hover:text-primary-700 font-semibold"
+              className="text-sm font-semibold text-primary-600 hover:text-primary-700"
             >
               Add Money
             </Link> */}
           </div>
-          <p className="text-gray-600 text-sm mb-1">Wallet Balance</p>
+          <p className="mb-1 text-sm text-gray-600">Wallet Balance</p>
           <p className="text-3xl font-bold text-gray-900">
             {formatCurrency(userData?.wallet?.balance || 0)}
           </p>
         </div>
 
         {/* Total Referrals */}
-        <div className="card hover:shadow-xl transition">
-          <div className="bg-blue-100 p-3 rounded-lg w-fit mb-4">
-            <Users className="h-6 w-6 text-blue-600" />
+        <div className="transition card hover:shadow-xl">
+          <div className="p-3 mb-4 bg-blue-100 rounded-lg w-fit">
+            <Users className="w-6 h-6 text-blue-600" />
           </div>
-          <p className="text-gray-600 text-sm mb-1">Total Referrals</p>
+          <p className="mb-1 text-sm text-gray-600">Total Referrals</p>
           <p className="text-3xl font-bold text-gray-900">
             {stats.referrals.length}
           </p>
         </div>
 
         {/* Monthly Referrals */}
-        <div className="card hover:shadow-xl transition">
-          <div className="bg-purple-100 p-3 rounded-lg w-fit mb-4">
-            <TrendingUp className="h-6 w-6 text-purple-600" />
+        <div className="transition card hover:shadow-xl">
+          <div className="p-3 mb-4 bg-purple-100 rounded-lg w-fit">
+            <TrendingUp className="w-6 h-6 text-purple-600" />
           </div>
-          <p className="text-gray-600 text-sm mb-1">This Month</p>
+          <p className="mb-1 text-sm text-gray-600">This Month</p>
           <p className="text-3xl font-bold text-gray-900">
             {stats.monthlyReferrals}
           </p>
         </div>
 
         {/* Total Earnings */}
-        <div className="card hover:shadow-xl transition">
-          <div className="bg-orange-100 p-3 rounded-lg w-fit mb-4">
-            <Gift className="h-6 w-6 text-orange-600" />
+        <div className="transition card hover:shadow-xl">
+          <div className="p-3 mb-4 bg-orange-100 rounded-lg w-fit">
+            <Gift className="w-6 h-6 text-orange-600" />
           </div>
-          <p className="text-gray-600 text-sm mb-1">Total Earnings</p>
+          <p className="mb-1 text-sm text-gray-600">Total Earnings</p>
           <p className="text-3xl font-bold text-gray-900">
             {formatCurrency(userData?.stats?.totalEarnings || 0)}
           </p>
@@ -241,9 +236,9 @@ const UserDashboard = () => {
 
       {/* Referral Code Section - Only show if user is active */}
       {userData?.isReferralActive && (
-        <div className="card bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-          <h3 className="text-xl font-bold mb-4">Your Referral Code</h3>
-          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 mb-4">
+        <div className="text-white bg-gradient-to-r from-purple-600 to-pink-600 card">
+          <h3 className="mb-4 text-xl font-bold">Your Referral Code</h3>
+          <div className="p-4 mb-4 rounded-lg backdrop-blur-sm bg-white/20">
             <p className="text-4xl font-bold tracking-wider text-center">
               {userData?.referralCode}
             </p>
@@ -251,10 +246,10 @@ const UserDashboard = () => {
 
           {/* Shareable Link */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-purple-100 mb-2">
+            <label className="block mb-2 text-sm font-medium text-purple-100">
               Shareable Link
             </label>
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+            <div className="p-3 rounded-lg backdrop-blur-sm bg-white/20">
               <code className="text-xs break-all">
                 {`${window.location.origin}/register?ref=${userData?.referralCode}`}
               </code>
@@ -264,20 +259,20 @@ const UserDashboard = () => {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handleCopyReferralCode}
-              className="bg-white text-purple-600 hover:bg-gray-100 font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-2"
+              className="flex justify-center items-center px-4 py-3 space-x-2 font-semibold text-purple-600 bg-white rounded-lg transition hover:bg-gray-100"
             >
               {copied ? (
-                <Check className="h-5 w-5" />
+                <Check className="w-5 h-5" />
               ) : (
-                <Copy className="h-5 w-5" />
+                <Copy className="w-5 h-5" />
               )}
               <span>{copied ? "Copied!" : "Copy Code"}</span>
             </button>
             <button
               onClick={shareReferralLink}
-              className="bg-white text-pink-600 hover:bg-gray-100 font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center space-x-2"
+              className="flex justify-center items-center px-4 py-3 space-x-2 font-semibold text-pink-600 bg-white rounded-lg transition hover:bg-gray-100"
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className="w-5 h-5" />
               <span>Share Link</span>
             </button>
           </div>
@@ -286,20 +281,20 @@ const UserDashboard = () => {
 
       {/* Show activation notice if not active */}
       {!userData?.isReferralActive && (
-        <div className="card bg-gradient-to-r from-gray-600 to-gray-700 text-white">
+        <div className="text-white bg-gradient-to-r from-gray-600 to-gray-700 card">
           <div className="flex items-center space-x-4">
-            <div className="bg-white/20 p-4 rounded-full">
-              <Lock className="h-8 w-8" />
+            <div className="p-4 rounded-full bg-white/20">
+              <Lock className="w-8 h-8" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold mb-2">Referral Code Locked</h3>
-              <p className="text-gray-200 text-sm mb-3">
+              <h3 className="mb-2 text-xl font-bold">Referral Code Locked</h3>
+              <p className="mb-3 text-sm text-gray-200">
                 Add ₹20 to your wallet to unlock your referral code and start
                 earning!
               </p>
               <Link
                 to="/user/add-money"
-                className="inline-block bg-white text-gray-900 hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition text-sm"
+                className="inline-block px-4 py-2 text-sm font-semibold text-gray-900 bg-white rounded-lg transition hover:bg-gray-100"
               >
                 Activate Now
               </Link>
@@ -316,20 +311,20 @@ const UserDashboard = () => {
           </h3>
           <Link
             to="/user/transactions"
-            className="text-sm text-primary-600 hover:text-primary-700 font-semibold"
+            className="text-sm font-semibold text-primary-600 hover:text-primary-700"
           >
             View All
           </Link>
         </div>
 
         {stats.recentTransactions.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No transactions yet</p>
+          <p className="py-8 text-center text-gray-500">No transactions yet</p>
         ) : (
           <div className="space-y-3">
             {stats.recentTransactions.map((txn) => (
               <div
                 key={txn.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                className="flex justify-between items-center p-4 bg-gray-50 rounded-lg transition hover:bg-gray-100"
               >
                 <div className="flex items-center space-x-3">
                   <div
@@ -340,9 +335,9 @@ const UserDashboard = () => {
                     }`}
                   >
                     {txn.type === "CREDIT" || txn.type === "REFERRAL_BONUS" ? (
-                      <ArrowDownRight className="h-5 w-5 text-green-600" />
+                      <ArrowDownRight className="w-5 h-5 text-green-600" />
                     ) : (
-                      <ArrowUpRight className="h-5 w-5 text-red-600" />
+                      <ArrowUpRight className="w-5 h-5 text-red-600" />
                     )}
                   </div>
                   <div>

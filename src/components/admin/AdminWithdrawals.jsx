@@ -23,6 +23,7 @@ import {
   TRANSACTION_STATUS,
 } from "../../utils/constants";
 import toast from "react-hot-toast";
+import { approveWithdrawal, rejectWithdrawal } from "../../api/vercelFunctions";
 
 const AdminWithdrawals = () => {
   const [withdrawals, setWithdrawals] = useState([]);
@@ -156,11 +157,11 @@ const AdminWithdrawals = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case WITHDRAWAL_STATUS.PENDING:
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="w-5 h-5 text-yellow-600" />;
       case WITHDRAWAL_STATUS.APPROVED:
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
       case WITHDRAWAL_STATUS.REJECTED:
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="w-5 h-5 text-red-600" />;
       default:
         return null;
     }
@@ -181,11 +182,75 @@ const AdminWithdrawals = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex justify-center items-center h-96">
+        <div className="w-12 h-12 rounded-full border-b-2 animate-spin border-primary-600"></div>
       </div>
     );
   }
+
+  const handleApprove = async (withdrawal) => {
+    if (
+      !window.confirm(
+        `Approve withdrawal of ${formatCurrency(withdrawal.amount)} for ${
+          withdrawal.userName
+        }?`
+      )
+    ) {
+      return;
+    }
+
+    setProcessing(withdrawal.id);
+
+    try {
+      // ✅ Call Vercel API
+      const result = await approveWithdrawal(
+        withdrawal.id,
+        adminNote || "Approved and processed"
+      );
+
+      toast.success(result.message);
+      setSelectedWithdrawal(null);
+      setAdminNote("");
+      fetchWithdrawals();
+    } catch (error) {
+      console.error("Error approving withdrawal:", error);
+      toast.error(error.message || "Failed to approve withdrawal");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleReject = async (withdrawal) => {
+    if (!adminNote.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Reject withdrawal of ${formatCurrency(withdrawal.amount)}?`
+      )
+    ) {
+      return;
+    }
+
+    setProcessing(withdrawal.id);
+
+    try {
+      // ✅ Call Vercel API
+      const result = await rejectWithdrawal(withdrawal.id, adminNote);
+
+      toast.success(result.message);
+      setSelectedWithdrawal(null);
+      setAdminNote("");
+      fetchWithdrawals();
+    } catch (error) {
+      console.error("Error rejecting withdrawal:", error);
+      toast.error(error.message || "Failed to reject withdrawal");
+    } finally {
+      setProcessing(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -196,11 +261,11 @@ const AdminWithdrawals = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-yellow-50 border-yellow-200">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="bg-yellow-50 border-yellow-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-yellow-700 text-sm">Pending</p>
+              <p className="text-sm text-yellow-700">Pending</p>
               <p className="text-3xl font-bold text-yellow-900">
                 {
                   withdrawals.filter(
@@ -209,14 +274,14 @@ const AdminWithdrawals = () => {
                 }
               </p>
             </div>
-            <Clock className="h-12 w-12 text-yellow-600" />
+            <Clock className="w-12 h-12 text-yellow-600" />
           </div>
         </div>
 
-        <div className="card bg-green-50 border-green-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-green-50 border-green-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-green-700 text-sm">Approved</p>
+              <p className="text-sm text-green-700">Approved</p>
               <p className="text-3xl font-bold text-green-900">
                 {
                   withdrawals.filter(
@@ -225,14 +290,14 @@ const AdminWithdrawals = () => {
                 }
               </p>
             </div>
-            <CheckCircle className="h-12 w-12 text-green-600" />
+            <CheckCircle className="w-12 h-12 text-green-600" />
           </div>
         </div>
 
-        <div className="card bg-red-50 border-red-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-red-50 border-red-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-red-700 text-sm">Rejected</p>
+              <p className="text-sm text-red-700">Rejected</p>
               <p className="text-3xl font-bold text-red-900">
                 {
                   withdrawals.filter(
@@ -241,7 +306,7 @@ const AdminWithdrawals = () => {
                 }
               </p>
             </div>
-            <XCircle className="h-12 w-12 text-red-600" />
+            <XCircle className="w-12 h-12 text-red-600" />
           </div>
         </div>
       </div>
@@ -251,7 +316,7 @@ const AdminWithdrawals = () => {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="input-field w-full md:w-64"
+          className="w-full input-field md:w-64"
         >
           <option value="PENDING">Pending Withdrawals</option>
           <option value="APPROVED">Approved Withdrawals</option>
@@ -263,21 +328,21 @@ const AdminWithdrawals = () => {
       {/* Withdrawals List */}
       <div className="space-y-4">
         {filteredWithdrawals.length === 0 ? (
-          <div className="card text-center py-12">
-            <DollarSign className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <div className="py-12 text-center card">
+            <DollarSign className="mx-auto mb-4 w-16 h-16 text-gray-300" />
             <p className="text-gray-500">No withdrawals found</p>
           </div>
         ) : (
           filteredWithdrawals.map((withdrawal) => (
             <div
               key={withdrawal.id}
-              className="card hover:shadow-xl transition"
+              className="transition card hover:shadow-xl"
             >
-              <div className="flex flex-col lg:flex-row justify-between">
+              <div className="flex flex-col justify-between lg:flex-row">
                 <div className="flex-1 space-y-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <div className="flex items-center space-x-2 mb-1">
+                      <div className="flex items-center mb-1 space-x-2">
                         <h3 className="text-xl font-bold text-gray-900">
                           {withdrawal.userName}
                         </h3>
@@ -300,42 +365,19 @@ const AdminWithdrawals = () => {
                       </p>
                     </div>
                   </div>
-
                   {/* Bank Details */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">
-                      Bank Details:
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-gray-600">Account Holder:</span>
-                        <span className="ml-2 font-semibold">
-                          {withdrawal.bankDetails.accountHolderName}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Bank:</span>
-                        <span className="ml-2 font-semibold">
-                          {withdrawal.bankDetails.bankName}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Account Number:</span>
-                        <span className="ml-2 font-semibold">
-                          {withdrawal.bankDetails.accountNumber}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">IFSC:</span>
-                        <span className="ml-2 font-semibold">
-                          {withdrawal.bankDetails.ifscCode}
-                        </span>
-                      </div>
+                  {/* // In the withdrawal details section, replace bank details
+                  with: */}
+                  <div className="p-3 text-sm bg-gray-50 rounded">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">UPI ID:</span>
+                      <span className="font-mono font-semibold">
+                        {withdrawal.upiId}
+                      </span>
                     </div>
                   </div>
-
                   {withdrawal.adminNote && (
-                    <div className="bg-blue-50 border-l-4 border-blue-600 p-3">
+                    <div className="p-3 bg-blue-50 border-l-4 border-blue-600">
                       <p className="text-sm text-blue-900">
                         <span className="font-semibold">Admin Note: </span>
                         {withdrawal.adminNote}
@@ -345,7 +387,7 @@ const AdminWithdrawals = () => {
                 </div>
 
                 {withdrawal.status === WITHDRAWAL_STATUS.PENDING && (
-                  <div className="lg:ml-6 mt-4 lg:mt-0 flex lg:flex-col gap-3 lg:w-48">
+                  <div className="flex gap-3 mt-4 lg:ml-6 lg:mt-0 lg:flex-col lg:w-48">
                     <button
                       onClick={() => setSelectedWithdrawal(withdrawal)}
                       className="flex-1 btn-primary"
@@ -363,23 +405,23 @@ const AdminWithdrawals = () => {
 
       {/* Review Modal */}
       {selectedWithdrawal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full">
+        <div className="flex fixed inset-0 z-50 justify-center items-center p-4 bg-black bg-opacity-50">
+          <div className="w-full max-w-lg bg-white rounded-xl">
             <div className="p-6">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              <h3 className="mb-4 text-2xl font-bold text-gray-900">
                 Review Withdrawal
               </h3>
 
-              <div className="space-y-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
+              <div className="mb-6 space-y-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-600">Amount</p>
                   <p className="text-2xl font-bold text-primary-600">
                     {formatCurrency(selectedWithdrawal.amount)}
                   </p>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-2">User Details</p>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="mb-2 text-sm text-gray-600">User Details</p>
                   <p className="font-semibold">{selectedWithdrawal.userName}</p>
                   <p className="text-sm text-gray-600">
                     {selectedWithdrawal.userEmail}
@@ -387,7 +429,7 @@ const AdminWithdrawals = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block mb-2 text-sm font-medium text-gray-700">
                     Admin Note
                   </label>
                   <textarea
@@ -404,14 +446,14 @@ const AdminWithdrawals = () => {
                 <button
                   onClick={() => handleApprove(selectedWithdrawal)}
                   disabled={processing}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50"
+                  className="flex-1 px-4 py-2 font-semibold text-white bg-green-600 rounded-lg transition hover:bg-green-700 disabled:opacity-50"
                 >
                   {processing ? "Processing..." : "Approve"}
                 </button>
                 <button
                   onClick={() => handleReject(selectedWithdrawal)}
                   disabled={processing}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50"
+                  className="flex-1 px-4 py-2 font-semibold text-white bg-red-600 rounded-lg transition hover:bg-red-700 disabled:opacity-50"
                 >
                   Reject
                 </button>

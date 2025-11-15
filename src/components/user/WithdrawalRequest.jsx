@@ -1,35 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { db } from "../../firebase/config";
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  serverTimestamp,
-} from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { functions } from "../../firebase/config";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import {
   DollarSign,
   AlertCircle,
   Clock,
   CheckCircle,
   XCircle,
+  Smartphone,
 } from "lucide-react";
-import { formatCurrency, formatDate } from "../../utils/helpers";
+import { formatCurrency, formatDate, validateUPI } from "../../utils/helpers";
 import { CONSTANTS, WITHDRAWAL_STATUS } from "../../utils/constants";
 import toast from "react-hot-toast";
+import { createWithdrawalRequest } from '../../api/vercelFunctions';
+
 
 const WithdrawalRequest = () => {
   const { userData, refreshUserData } = useAuth();
   const [amount, setAmount] = useState("");
-  const [bankDetails, setBankDetails] = useState({
-    accountNumber: "",
-    ifscCode: "",
-    accountHolderName: "",
-    bankName: "",
-  });
+  const [upiId, setUpiId] = useState(""); // Changed from bankDetails
   const [loading, setLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState([]);
 
@@ -58,70 +50,80 @@ const WithdrawalRequest = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const withdrawalAmount = Number(amount);
+  const withdrawalAmount = Number(amount);
 
-    // Validations
-    if (withdrawalAmount < CONSTANTS.MIN_WITHDRAWAL) {
-      toast.error(
-        `Minimum withdrawal amount is ${formatCurrency(
-          CONSTANTS.MIN_WITHDRAWAL
-        )}`
-      );
-      return;
-    }
+  // Validations
+  if (withdrawalAmount < CONSTANTS.MIN_WITHDRAWAL) {
+    toast.error(
+      `Minimum withdrawal amount is ${formatCurrency(CONSTANTS.MIN_WITHDRAWAL)}`
+    );
+    return;
+  }
 
-    if (withdrawalAmount > userData.wallet.balance) {
-      toast.error("Insufficient balance");
-      return;
-    }
+  if (withdrawalAmount > userData.wallet.balance) {
+    toast.error("Insufficient balance");
+    return;
+  }
 
-    if (withdrawalAmount > CONSTANTS.MAX_WITHDRAWAL) {
-      toast.error(
-        `Maximum withdrawal amount is ${formatCurrency(
-          CONSTANTS.MAX_WITHDRAWAL
-        )}`
-      );
-      return;
-    }
+  if (withdrawalAmount > CONSTANTS.MAX_WITHDRAWAL) {
+    toast.error(
+      `Maximum withdrawal amount is ${formatCurrency(CONSTANTS.MAX_WITHDRAWAL)}`
+    );
+    return;
+  }
 
-    if (
-      !bankDetails.accountNumber ||
-      !bankDetails.ifscCode ||
-      !bankDetails.accountHolderName
-    ) {
-      toast.error("Please fill all bank details");
+  if (!validateUPI(upiId)) {
+    toast.error("Please enter a valid UPI ID (e.g., username@paytm)");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // ✅ Call Vercel API
+    const result = await createWithdrawalRequest(withdrawalAmount, upiId.toLowerCase());
+
+    toast.success(result.message);
+    setAmount("");
+    setUpiId("");
+    fetchWithdrawals();
+    await refreshUserData();
+  } catch (error) {
+    console.error("Error submitting withdrawal:", error);
+    toast.error(error.message || "Failed to submit withdrawal request");
+  } finally {
+    setLoading(false);
+  }
+};
+
+    // Validate UPI ID
+    if (!validateUPI(upiId)) {
+      toast.error("Please enter a valid UPI ID (e.g., username@paytm)");
       return;
     }
 
     setLoading(true);
 
     try {
-      await addDoc(collection(db, "withdrawals"), {
-        userId: userData.id,
-        userName: userData.name,
-        userEmail: userData.email,
+      const createWithdrawal = httpsCallable(
+        functions,
+        "createWithdrawalRequest"
+      );
+      const result = await createWithdrawal({
         amount: withdrawalAmount,
-        bankDetails: bankDetails,
-        status: WITHDRAWAL_STATUS.PENDING,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        upiId: upiId.toLowerCase(), // Store in lowercase
       });
 
-      toast.success("Withdrawal request submitted successfully!");
+      toast.success(result.data.message);
       setAmount("");
-      setBankDetails({
-        accountNumber: "",
-        ifscCode: "",
-        accountHolderName: "",
-        bankName: "",
-      });
+      setUpiId("");
       fetchWithdrawals();
       await refreshUserData();
     } catch (error) {
       console.error("Error submitting withdrawal:", error);
-      toast.error("Failed to submit withdrawal request");
+      toast.error(error.message || "Failed to submit withdrawal request");
     } finally {
       setLoading(false);
     }
@@ -130,11 +132,11 @@ const WithdrawalRequest = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case WITHDRAWAL_STATUS.PENDING:
-        return <Clock className="h-5 w-5 text-yellow-600" />;
+        return <Clock className="w-5 h-5 text-yellow-600" />;
       case WITHDRAWAL_STATUS.APPROVED:
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
       case WITHDRAWAL_STATUS.REJECTED:
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="w-5 h-5 text-red-600" />;
       default:
         return null;
     }
@@ -154,35 +156,35 @@ const WithdrawalRequest = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto space-y-6 max-w-4xl">
       {/* Wallet Balance Card */}
-      <div className="card bg-gradient-to-r from-green-600 to-green-700 text-white">
-        <div className="flex items-center justify-between">
+      <div className="text-white bg-gradient-to-r from-green-600 to-green-700 card">
+        <div className="flex justify-between items-center">
           <div>
-            <p className="text-green-100 mb-1">Available Balance</p>
+            <p className="mb-1 text-green-100">Available Balance</p>
             <p className="text-4xl font-bold">
               {formatCurrency(userData?.wallet?.balance || 0)}
             </p>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg">
-            <DollarSign className="h-12 w-12" />
+          <div className="p-4 rounded-lg backdrop-blur-sm bg-white/20">
+            <DollarSign className="w-12 h-12" />
           </div>
         </div>
       </div>
 
       {/* Withdrawal Form */}
       <div className="card">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Request Withdrawal
+        <h2 className="mb-6 text-2xl font-bold text-gray-900">
+          Request Withdrawal via UPI
         </h2>
 
         {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="p-4 mb-6 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-700">
-              <p className="font-semibold mb-1">Withdrawal Guidelines:</p>
-              <ul className="list-disc list-inside space-y-1">
+              <p className="mb-1 font-semibold">Withdrawal Guidelines:</p>
+              <ul className="space-y-1 list-disc list-inside">
                 <li>
                   Minimum withdrawal: {formatCurrency(CONSTANTS.MIN_WITHDRAWAL)}
                 </li>
@@ -190,7 +192,7 @@ const WithdrawalRequest = () => {
                   Maximum withdrawal: {formatCurrency(CONSTANTS.MAX_WITHDRAWAL)}
                 </li>
                 <li>Processing time: 2-3 business days</li>
-                <li>Bank details must match your registered name</li>
+                <li>Amount will be sent to your UPI ID directly</li>
               </ul>
             </div>
           </div>
@@ -199,16 +201,16 @@ const WithdrawalRequest = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
               Withdrawal Amount *
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-3 text-gray-500">₹</span>
+              <span className="absolute top-3 left-4 text-gray-500">₹</span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="input-field pl-10"
+                className="pl-10 input-field"
                 placeholder="Enter amount"
                 required
                 min={CONSTANTS.MIN_WITHDRAWAL}
@@ -220,81 +222,25 @@ const WithdrawalRequest = () => {
             </div>
           </div>
 
-          {/* Bank Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Account Holder Name *
-              </label>
+          {/* UPI ID */}
+          <div>
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              UPI ID *
+            </label>
+            <div className="relative">
+              <Smartphone className="absolute top-3 left-3 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                value={bankDetails.accountHolderName}
-                onChange={(e) =>
-                  setBankDetails({
-                    ...bankDetails,
-                    accountHolderName: e.target.value,
-                  })
-                }
-                className="input-field"
-                placeholder="As per bank account"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value.toLowerCase())}
+                className="pl-10 input-field"
+                placeholder="username@paytm"
                 required
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bank Name *
-              </label>
-              <input
-                type="text"
-                value={bankDetails.bankName}
-                onChange={(e) =>
-                  setBankDetails({ ...bankDetails, bankName: e.target.value })
-                }
-                className="input-field"
-                placeholder="e.g., State Bank of India"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Account Number *
-              </label>
-              <input
-                type="text"
-                value={bankDetails.accountNumber}
-                onChange={(e) =>
-                  setBankDetails({
-                    ...bankDetails,
-                    accountNumber: e.target.value,
-                  })
-                }
-                className="input-field"
-                placeholder="Enter account number"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                IFSC Code *
-              </label>
-              <input
-                type="text"
-                value={bankDetails.ifscCode}
-                onChange={(e) =>
-                  setBankDetails({
-                    ...bankDetails,
-                    ifscCode: e.target.value.toUpperCase(),
-                  })
-                }
-                className="input-field uppercase"
-                placeholder="e.g., SBIN0001234"
-                required
-                maxLength="11"
-              />
-            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Example: yourname@paytm, yourname@phonepe, yourname@googlepay
+            </p>
           </div>
 
           <button
@@ -309,12 +255,12 @@ const WithdrawalRequest = () => {
 
       {/* Withdrawal History */}
       <div className="card">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">
+        <h3 className="mb-4 text-xl font-bold text-gray-900">
           Withdrawal History
         </h3>
 
         {withdrawals.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
+          <p className="py-8 text-center text-gray-500">
             No withdrawal requests yet
           </p>
         ) : (
@@ -322,9 +268,9 @@ const WithdrawalRequest = () => {
             {withdrawals.map((withdrawal) => (
               <div
                 key={withdrawal.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                className="p-4 rounded-lg border border-gray-200 transition hover:shadow-md"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center space-x-3">
                     <div
                       className={`p-2 rounded-lg ${
@@ -338,7 +284,7 @@ const WithdrawalRequest = () => {
                       {getStatusIcon(withdrawal.status)}
                     </div>
                     <div>
-                      <p className="font-bold text-lg text-gray-900">
+                      <p className="text-lg font-bold text-gray-900">
                         {formatCurrency(withdrawal.amount)}
                       </p>
                       <p className="text-sm text-gray-500">
@@ -355,25 +301,17 @@ const WithdrawalRequest = () => {
                   </span>
                 </div>
 
-                <div className="bg-gray-50 rounded p-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-gray-600">Account:</span>
-                      <span className="ml-2 font-semibold">
-                        ****{withdrawal.bankDetails?.accountNumber?.slice(-4)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">IFSC:</span>
-                      <span className="ml-2 font-semibold">
-                        {withdrawal.bankDetails?.ifscCode}
-                      </span>
-                    </div>
+                <div className="p-3 text-sm bg-gray-50 rounded">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">UPI ID:</span>
+                    <span className="font-mono font-semibold">
+                      {withdrawal.upiId}
+                    </span>
                   </div>
                 </div>
 
                 {withdrawal.adminNote && (
-                  <div className="mt-3 bg-blue-50 border-l-4 border-blue-600 p-3">
+                  <div className="p-3 mt-3 bg-blue-50 border-l-4 border-blue-600">
                     <p className="text-sm text-blue-900">
                       <span className="font-semibold">Admin Note: </span>
                       {withdrawal.adminNote}

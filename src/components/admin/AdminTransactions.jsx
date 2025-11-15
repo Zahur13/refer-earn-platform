@@ -51,9 +51,9 @@ const AdminTransactions = () => {
       type === TRANSACTION_TYPES.CREDIT ||
       type === TRANSACTION_TYPES.REFERRAL_BONUS
     ) {
-      return <ArrowDownRight className="h-5 w-5 text-green-600" />;
+      return <ArrowDownRight className="w-5 h-5 text-green-600" />;
     } else {
-      return <ArrowUpRight className="h-5 w-5 text-red-600" />;
+      return <ArrowUpRight className="w-5 h-5 text-red-600" />;
     }
   };
 
@@ -70,8 +70,8 @@ const AdminTransactions = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex justify-center items-center h-96">
+        <div className="w-12 h-12 rounded-full border-b-2 animate-spin border-primary-600"></div>
       </div>
     );
   }
@@ -99,40 +99,40 @@ const AdminTransactions = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-blue-50 border-blue-200">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="bg-blue-50 border-blue-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-blue-700 text-sm">Total Volume</p>
+              <p className="text-sm text-blue-700">Total Volume</p>
               <p className="text-3xl font-bold text-blue-900">
                 {formatCurrency(totalVolume)}
               </p>
             </div>
-            <Activity className="h-12 w-12 text-blue-600" />
+            <Activity className="w-12 h-12 text-blue-600" />
           </div>
         </div>
 
-        <div className="card bg-green-50 border-green-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-green-50 border-green-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-green-700 text-sm">Credits</p>
+              <p className="text-sm text-green-700">Credits</p>
               <p className="text-3xl font-bold text-green-900">
                 {formatCurrency(creditVolume)}
               </p>
             </div>
-            <ArrowDownRight className="h-12 w-12 text-green-600" />
+            <ArrowDownRight className="w-12 h-12 text-green-600" />
           </div>
         </div>
 
-        <div className="card bg-red-50 border-red-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-red-50 border-red-200 card">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-red-700 text-sm">Debits</p>
+              <p className="text-sm text-red-700">Debits</p>
               <p className="text-3xl font-bold text-red-900">
                 {formatCurrency(debitVolume)}
               </p>
             </div>
-            <ArrowUpRight className="h-12 w-12 text-red-600" />
+            <ArrowUpRight className="w-12 h-12 text-red-600" />
           </div>
         </div>
       </div>
@@ -140,11 +140,11 @@ const AdminTransactions = () => {
       {/* Filter */}
       <div className="card">
         <div className="flex items-center space-x-2">
-          <Filter className="h-5 w-5 text-gray-500" />
+          <Filter className="w-5 h-5 text-gray-500" />
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="input-field w-full md:w-64"
+            className="w-full input-field md:w-64"
           >
             <option value="ALL">All Transactions</option>
             <option value={TRANSACTION_TYPES.CREDIT}>Credits</option>
@@ -163,19 +163,19 @@ const AdminTransactions = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                <th className="px-4 py-3 font-semibold text-left text-gray-700">
                   Type
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                <th className="px-4 py-3 font-semibold text-left text-gray-700">
                   Description
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                <th className="px-4 py-3 font-semibold text-left text-gray-700">
                   Amount
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                <th className="px-4 py-3 font-semibold text-left text-gray-700">
                   Status
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                <th className="px-4 py-3 font-semibold text-left text-gray-700">
                   Date
                 </th>
               </tr>
@@ -186,7 +186,7 @@ const AdminTransactions = () => {
                   key={txn.id}
                   className="border-b border-gray-100 hover:bg-gray-50"
                 >
-                  <td className="py-3 px-4">
+                  <td className="px-4 py-3">
                     <div className="flex items-center space-x-2">
                       <div
                         className={`p-2 rounded-lg ${getTransactionColor(
@@ -198,12 +198,12 @@ const AdminTransactions = () => {
                       <span className="text-sm font-semibold">{txn.type}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-4 py-3">
                     <p className="font-semibold text-gray-900">
                       {txn.description}
                     </p>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-4 py-3">
                     <p
                       className={`text-lg font-bold ${
                         txn.type === TRANSACTION_TYPES.CREDIT ||
@@ -219,7 +219,7 @@ const AdminTransactions = () => {
                       {formatCurrency(txn.amount)}
                     </p>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="px-4 py-3">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         txn.status === "SUCCESS"
@@ -231,8 +231,29 @@ const AdminTransactions = () => {
                     >
                       {txn.status}
                     </span>
+
+                    {/* // In the transaction display, add UTR if available:  */}
+                    <td>
+                      {txn.utrNumber && (
+                        <div className="px-2 py-1 mt-2 bg-blue-50 rounded border border-blue-200">
+                          <span className="text-xs text-blue-700">
+                            UTR:{" "}
+                            <span className="font-mono font-semibold">
+                              {txn.utrNumber}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      {txn.upiId && (
+                        <div className="px-2 py-1 mt-2 bg-green-50 rounded border border-green-200">
+                          <span className="text-xs text-green-700">
+                            UPI: <span className="font-mono">{txn.upiId}</span>
+                          </span>
+                        </div>
+                      )}
+                    </td>
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-gray-600">
                     {formatDate(txn.createdAt)}
                   </td>
                 </tr>
@@ -241,7 +262,7 @@ const AdminTransactions = () => {
           </table>
 
           {filteredTransactions.length === 0 && (
-            <p className="text-gray-500 text-center py-12">
+            <p className="py-12 text-center text-gray-500">
               No transactions found
             </p>
           )}

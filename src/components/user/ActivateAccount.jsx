@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { functions } from "../../firebase/config";
 import {
   AlertCircle,
   CheckCircle,
@@ -13,9 +15,9 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "../../utils/helpers";
 import { CONSTANTS } from "../../utils/constants";
-import { processActivationPayment } from "../../firebase/functions";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { submitActivationRequest } from "../../api/vercelFunctions";
 
 const ActivateAccount = () => {
   const { userData, refreshUserData } = useAuth();
@@ -58,54 +60,70 @@ const ActivateAccount = () => {
     setProcessing(true);
 
     try {
-      // Simulate verification delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Submitting activation request...");
 
-      // Process payment
-      const result = await processActivationPayment(
-        userData.id,
-        CONSTANTS.ACTIVATION_AMOUNT,
-        {
-          utrNumber: utrNumber.toUpperCase(),
-          upiId: CONSTANTS.ADMIN_UPI_ID,
-          method: "UPI",
-        }
+      // ✅ Call Vercel API
+      const result = await submitActivationRequest(utrNumber.toUpperCase());
+
+      console.log("✅ Success:", result);
+
+      toast.success(
+        result.message || "Activation request submitted successfully!"
       );
 
-      toast.success(result.message);
       await refreshUserData();
 
-      // Redirect to dashboard
       setTimeout(() => {
         navigate("/user/dashboard");
       }, 2000);
     } catch (error) {
-      console.error("Payment error:", error);
-      toast.error(
-        error.message || "Payment verification failed. Please try again."
-      );
+      console.error("❌ Error:", error);
+      toast.error(error.message || "Failed to submit activation request");
       setProcessing(false);
     } finally {
       setLoading(false);
     }
   };
 
+  // Check if already activated
+  if (userData?.isReferralActive) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="py-12 text-center card">
+          <CheckCircle className="mx-auto mb-4 w-16 h-16 text-green-500" />
+          <h3 className="mb-2 text-xl font-bold text-gray-900">
+            Account Already Activated!
+          </h3>
+          <p className="mb-4 text-gray-600">
+            Your referral account is active. Start sharing your code to earn!
+          </p>
+          <button
+            onClick={() => navigate("/user/dashboard")}
+            className="btn-primary"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (processing) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="card text-center py-12">
+      <div className="mx-auto max-w-2xl">
+        <div className="py-12 text-center card">
           <div className="relative">
-            <Loader className="h-16 w-16 text-primary-600 mx-auto mb-4 animate-spin" />
-            <CheckCircle className="h-6 w-6 text-green-500 absolute top-0 right-1/2 transform translate-x-1/2" />
+            <Loader className="mx-auto mb-4 w-16 h-16 animate-spin text-primary-600" />
+            <CheckCircle className="absolute top-0 right-1/2 w-6 h-6 text-green-500 transform translate-x-1/2" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            Verifying Payment
+          <h3 className="mb-2 text-xl font-bold text-gray-900">
+            Submitting Request
           </h3>
           <p className="text-gray-600">
-            Please wait while we verify your payment...
+            Please wait while we submit your activation request...
           </p>
-          <p className="text-sm text-gray-500 mt-2">
-            This may take a few moments
+          <p className="mt-2 text-sm text-gray-500">
+            Admin will verify your payment shortly
           </p>
         </div>
       </div>
@@ -113,12 +131,12 @@ const ActivateAccount = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto space-y-6 max-w-4xl">
       {/* Header */}
-      <div className="card bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+      <div className="text-white bg-gradient-to-r card from-primary-600 to-primary-700">
         <div className="flex items-center space-x-4">
-          <div className="bg-white/20 p-4 rounded-full">
-            <Shield className="h-8 w-8" />
+          <div className="p-4 rounded-full bg-white/20">
+            <Shield className="w-8 h-8" />
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold">
@@ -133,13 +151,13 @@ const ActivateAccount = () => {
 
       {/* Payment Breakdown */}
       <div className="card">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">
+        <h3 className="mb-4 text-xl font-bold text-gray-900">
           💰 Payment Breakdown
         </h3>
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+        <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
           <div className="space-y-3">
             <div className="flex justify-between items-center pb-3 border-b border-gray-300">
-              <span className="text-gray-700 font-semibold">
+              <span className="font-semibold text-gray-700">
                 Activation Fee
               </span>
               <span className="text-3xl font-bold text-primary-600">
@@ -185,7 +203,7 @@ const ActivateAccount = () => {
                 </>
               )}
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+            <div className="p-3 mt-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <p className="text-sm text-yellow-800">
                 <strong>🎁 Your Benefit:</strong>{" "}
                 {hasReferrer
@@ -197,17 +215,17 @@ const ActivateAccount = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* UPI QR Code Section */}
         <div className="card">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-            <QrCode className="h-5 w-5 mr-2 text-primary-600" />
+          <h3 className="flex items-center mb-4 text-lg font-bold text-gray-900">
+            <QrCode className="mr-2 w-5 h-5 text-primary-600" />
             Scan QR Code
           </h3>
 
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 text-center">
+          <div className="p-6 text-center bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl">
             {/* QR Code Image */}
-            <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-lg">
+            <div className="inline-block p-4 mb-4 bg-white rounded-xl shadow-lg">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${CONSTANTS.ADMIN_UPI_ID}&pn=ReferAndEarn&am=${CONSTANTS.ACTIVATION_AMOUNT}&cu=INR`}
                 alt="UPI QR Code"
@@ -215,24 +233,24 @@ const ActivateAccount = () => {
               />
             </div>
 
-            <p className="text-sm text-gray-700 mb-2">Scan with any UPI app</p>
-            <div className="flex justify-center space-x-2 flex-wrap">
-              <span className="bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+            <p className="mb-2 text-sm text-gray-700">Scan with any UPI app</p>
+            <div className="flex flex-wrap justify-center space-x-2">
+              <span className="px-3 py-1 text-xs font-semibold text-gray-700 bg-white rounded-full shadow-sm">
                 GPay
               </span>
-              <span className="bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+              <span className="px-3 py-1 text-xs font-semibold text-gray-700 bg-white rounded-full shadow-sm">
                 PhonePe
               </span>
-              <span className="bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+              <span className="px-3 py-1 text-xs font-semibold text-gray-700 bg-white rounded-full shadow-sm">
                 Paytm
               </span>
-              <span className="bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+              <span className="px-3 py-1 text-xs font-semibold text-gray-700 bg-white rounded-full shadow-sm">
                 BHIM
               </span>
             </div>
           </div>
 
-          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="p-3 mt-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-800">
               <strong>Note:</strong> After scanning, amount (₹20) will be
               auto-filled
@@ -242,37 +260,37 @@ const ActivateAccount = () => {
 
         {/* UPI ID Section */}
         <div className="card">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-            <Smartphone className="h-5 w-5 mr-2 text-primary-600" />
+          <h3 className="flex items-center mb-4 text-lg font-bold text-gray-900">
+            <Smartphone className="mr-2 w-5 h-5 text-primary-600" />
             Or Pay via UPI ID
           </h3>
 
           <div className="space-y-4">
             {/* UPI ID Display */}
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <p className="text-xs text-gray-600 mb-2 font-semibold">
+            <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-300 border-dashed">
+              <p className="mb-2 text-xs font-semibold text-gray-600">
                 UPI ID:
               </p>
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-200">
-                <span className="text-xl font-mono font-bold text-gray-900 break-all">
+              <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                <span className="font-mono text-xl font-bold text-gray-900 break-all">
                   {CONSTANTS.ADMIN_UPI_ID}
                 </span>
                 <button
                   onClick={handleCopyUPI}
-                  className="ml-2 bg-primary-600 hover:bg-primary-700 text-white p-2 rounded-lg transition flex-shrink-0"
+                  className="flex-shrink-0 p-2 ml-2 text-white rounded-lg transition bg-primary-600 hover:bg-primary-700"
                 >
                   {copied ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="w-4 h-4" />
                   ) : (
-                    <Copy className="h-4 w-4" />
+                    <Copy className="w-4 h-4" />
                   )}
                 </button>
               </div>
             </div>
 
             {/* Amount Display */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-xs text-gray-600 mb-1 font-semibold">
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="mb-1 text-xs font-semibold text-gray-600">
                 Amount to Pay:
               </p>
               <p className="text-3xl font-bold text-green-700">
@@ -307,7 +325,7 @@ const ActivateAccount = () => {
                   4
                 </span>
                 <p className="text-sm text-gray-700">
-                  Enter it below to activate
+                  Enter it below and submit
                 </p>
               </div>
             </div>
@@ -317,19 +335,19 @@ const ActivateAccount = () => {
 
       {/* UTR Verification Form */}
       <div className="card">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">
-          ✅ Verify Your Payment
+        <h3 className="mb-4 text-xl font-bold text-gray-900">
+          ✅ Submit Your Payment Details
         </h3>
 
         <form onSubmit={handleSubmitPayment} className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">
+                <p className="mb-1 font-semibold">
                   Where to find UTR/Transaction ID?
                 </p>
-                <ul className="list-disc list-inside space-y-1">
+                <ul className="space-y-1 list-disc list-inside">
                   <li>Open your UPI app transaction history</li>
                   <li>Find the ₹20 payment you just made</li>
                   <li>Look for "UTR" or "Transaction ID" (12 digits)</li>
@@ -340,43 +358,43 @@ const ActivateAccount = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
               UTR / Transaction ID <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={utrNumber}
               onChange={(e) => setUtrNumber(e.target.value.toUpperCase())}
-              className="input-field font-mono uppercase text-lg"
+              className="font-mono text-lg uppercase input-field"
               placeholder="Enter 12-digit UTR number"
               maxLength="20"
               required
             />
-            <p className="text-xs text-gray-500 mt-2">Example: 123456789012</p>
+            <p className="mt-2 text-xs text-gray-500">Example: 123456789012</p>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
             <p className="text-sm text-yellow-800">
               <strong>⚠️ Important:</strong> Make sure you have completed the
-              UPI payment before submitting. Wrong UTR will result in activation
-              failure.
+              UPI payment before submitting. Admin will verify your UTR and
+              approve your activation.
             </p>
           </div>
 
           <button
             type="submit"
             disabled={loading || utrNumber.length < 12}
-            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-lg py-3"
+            className="py-3 w-full text-lg btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <span className="flex items-center justify-center">
-                <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                Verifying Payment...
+              <span className="flex justify-center items-center">
+                <Loader className="mr-3 -ml-1 w-5 h-5 text-white animate-spin" />
+                Submitting Request...
               </span>
             ) : (
-              <span className="flex items-center justify-center">
-                <CheckCircle className="mr-2 h-5 w-5" />
-                Verify & Activate Account
+              <span className="flex justify-center items-center">
+                <CheckCircle className="mr-2 w-5 h-5" />
+                Submit for Admin Approval
               </span>
             )}
           </button>
@@ -384,16 +402,16 @@ const ActivateAccount = () => {
       </div>
 
       {/* Security Badge */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex justify-center items-center space-x-4 text-sm text-gray-600">
           <div className="flex items-center space-x-2">
-            <Shield className="h-4 w-4 text-green-600" />
+            <Shield className="w-4 h-4 text-green-600" />
             <span>🔒 Secure Payment</span>
           </div>
-          <div className="hidden sm:block w-px h-4 bg-gray-300"></div>
+          <div className="hidden w-px h-4 bg-gray-300 sm:block"></div>
           <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span>✓ Instant Activation</span>
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <span>✓ Admin Verification</span>
           </div>
         </div>
       </div>

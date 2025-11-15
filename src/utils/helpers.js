@@ -43,3 +43,17 @@ export const validatePhone = (phone) => {
   const re = /^[6-9]\d{9}$/;
   return re.test(phone);
 };
+
+export const validateUPI = (upi) => {
+  // Format: username@bankname
+  const re = /^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/;
+  return re.test(upi);
+};
+
+export const maskUPI = (upi) => {
+  if (!upi) return "";
+  const [name, domain] = upi.split("@");
+  if (!name || !domain) return upi;
+  const maskedName = name.charAt(0) + "***" + name.slice(-1);
+  return `${maskedName}@${domain}`;
+};

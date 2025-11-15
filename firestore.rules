@@ -2,7 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // ============ HELPER FUNCTIONS ============
+    
     function isSignedIn() {
       return request.auth != null;
     }
@@ -17,77 +18,122 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    function cannotModifySensitiveFields() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-        'role', 
-        'referralCode', 
-        'referrerId', 
-        'referredBy',
-        'createdAt'
-      ]);
-    }
+    // ============ USERS COLLECTION ============
     
-    // USERS COLLECTION
     match /users/{userId} {
-      allow read: if true;
-      allow create: if request.resource.data.role == 'user' &&
-                      request.auth.uid == userId;
-      allow update: if (isSignedIn() && isOwner(userId) && cannotModifySensitiveFields()) ||
-                      isAdmin() ||
-                      (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                        'wallet', 'isReferralActive', 'stats', 'activatedAt'
-                      ]));
+      // Users can only read their own data, admins can read all
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      
+      // Only allow user creation during signup
+      allow create: if request.auth.uid == userId &&
+                      request.resource.data.role == 'user' &&
+                      request.resource.data.wallet.balance == 0 &&
+                      !request.resource.data.isReferralActive;
+      
+      // Users can only update safe fields (name, phone, etc.)
+      // Critical fields can ONLY be updated by Cloud Functions
+      allow update: if isOwner(userId) && 
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                        'role', 
+                        'wallet',
+                        'isReferralActive',
+                        'stats',
+                        'referralCode',
+                        'referrerId',
+                        'referredBy',
+                        'createdAt'
+                      ]) || isAdmin();
+      
       allow delete: if false;
     }
     
-    // REFERRAL CODES COLLECTION
+    // ============ REFERRAL CODES COLLECTION ============
+    
     match /referralCodes/{code} {
+      // Anyone can read to validate codes
       allow read: if true;
-      allow create: if isSignedIn();
+      // Only Cloud Functions can create
+      allow create: if false;
       allow update, delete: if false;
     }
     
-    // TRANSACTIONS COLLECTION
+    // ============ ACTIVATION REQUESTS COLLECTION ============
+    
+    match /activationRequests/{requestId} {
+      // Users can read their own requests, admins can read all
+      allow read: if isSignedIn() && 
+                    (request.auth.uid == resource.data.userId || isAdmin());
+      
+      // Only Cloud Functions can create (not direct client writes)
+      allow create: if false;
+      
+      // Only Cloud Functions can update
+      allow update: if false;
+      
+      allow delete: if false;
+    }
+    
+    // ============ TRANSACTIONS COLLECTION ============
+    
     match /transactions/{transactionId} {
+      // Users can read their own, admins can read all
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if isSignedIn();
+      // Only Cloud Functions can create transactions
+      allow create: if false;
       allow update, delete: if false;
     }
     
-    // WITHDRAWALS COLLECTION
+    // ============ WITHDRAWALS COLLECTION ============
+    
     match /withdrawals/{withdrawalId} {
+      // Users can read their own, admins can read all
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if isSignedIn() && 
-                      request.resource.data.userId == request.auth.uid &&
-                      request.resource.data.status == 'PENDING';
-      allow update: if isAdmin();
+      // Only Cloud Functions can create withdrawals
+      allow create: if false;
+      // Only Cloud Functions can update
+      allow update: if false;
       allow delete: if false;
     }
     
-    // ADMIN WITHDRAWALS COLLECTION
+    // ============ ADMIN WITHDRAWALS COLLECTION ============
+    
     match /adminWithdrawals/{withdrawalId} {
-      allow read, create: if isAdmin();
-      allow update: if isAdmin();
+      allow read: if isAdmin();
+      // Only Cloud Functions can create
+      allow create: if false;
+      allow update: if false;
       allow delete: if false;
     }
     
-    // ADMIN STATS COLLECTION
+    // ============ ADMIN STATS COLLECTION ============
+    
     match /adminStats/{document} {
       allow read: if isAdmin();
-      allow create, update: if isSignedIn();
+      // Only Cloud Functions can write
+      allow create, update: if false;
       allow delete: if false;
     }
     
-    // NOTIFICATIONS COLLECTION
+    // ============ NOTIFICATIONS COLLECTION ============
+    
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && 
                     request.auth.uid == resource.data.userId;
-      allow create: if isSignedIn();
+      // Only Cloud Functions can create
+      allow create: if false;
+      // Users can mark as read
       allow update: if isSignedIn() && 
                       request.auth.uid == resource.data.userId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+      allow delete: if false;
+    }
+    
+    // ============ TEMP USER DATA (for registration) ============
+    
+    match /tempUserData/{email} {
+      allow read, write: if isSignedIn() && request.auth.token.email == email;
       allow delete: if false;
     }
   }

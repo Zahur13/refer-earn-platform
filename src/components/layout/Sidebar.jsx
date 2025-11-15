@@ -18,6 +18,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const userMenuItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/user/dashboard" },
+    { name: "Activations", icon: Gift, path: "/admin/activations" },
     { name: "Withdraw", icon: DollarSign, path: "/user/withdraw" },
     { name: "Referrals", icon: Users, path: "/user/referrals" },
     { name: "Transactions", icon: History, path: "/user/transactions" },
@@ -39,7 +40,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
@@ -64,7 +65,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                 }`
               }
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className="w-5 h-5" />
               <span className="font-medium">{item.name}</span>
             </NavLink>
           ))}
