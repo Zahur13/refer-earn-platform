@@ -18,12 +18,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const userMenuItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/user/dashboard" },
-    { name: "Activations", icon: Gift, path: "/admin/activations" },
     { name: "Withdraw", icon: DollarSign, path: "/user/withdraw" },
     { name: "Referrals", icon: Users, path: "/user/referrals" },
     { name: "Transactions", icon: History, path: "/user/transactions" },
-    { name: "Statistics", icon: TrendingUp, path: "/admin/stats" },
-    { name: "My Earnings", icon: Wallet, path: "/admin/earnings" },
   ];
 
   const adminMenuItems = [
@@ -31,6 +28,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Users", icon: Users, path: "/admin/users" },
     { name: "Withdrawals", icon: DollarSign, path: "/admin/withdrawals" },
     { name: "Transactions", icon: Activity, path: "/admin/transactions" },
+    { name: "Activations", icon: Gift, path: "/admin/activations" },
+    { name: "Statistics", icon: TrendingUp, path: "/admin/stats" },
+    { name: "My Earnings", icon: Wallet, path: "/admin/earnings" },
   ];
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
