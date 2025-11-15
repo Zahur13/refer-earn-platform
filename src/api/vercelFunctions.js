@@ -1,10 +1,10 @@
+// src/api/vercelFunctions.js
 import { auth } from "../firebase/config";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
 async function callAPI(endpoint, data) {
   try {
-    // Get Firebase auth token
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error("Not authenticated");
@@ -34,7 +34,6 @@ async function callAPI(endpoint, data) {
   }
 }
 
-// Activation functions
 export const submitActivationRequest = async (utrNumber) => {
   return callAPI("submitActivationRequest", { utrNumber });
 };
@@ -47,7 +46,6 @@ export const rejectActivation = async (requestId, reason) => {
   return callAPI("rejectActivation", { requestId, reason });
 };
 
-// Withdrawal functions
 export const createWithdrawalRequest = async (amount, upiId) => {
   return callAPI("createWithdrawalRequest", { amount, upiId });
 };

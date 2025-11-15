@@ -1,0 +1,8 @@
+functions/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+serviceAccountKey.json
+.env.local
+.DS_Store
