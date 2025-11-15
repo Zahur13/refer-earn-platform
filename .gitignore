@@ -21,7 +21,7 @@
 .env.development.local
 .env.test
 .env.test.local
-.env.production
+
 .env.production.local
 
 # Firebase

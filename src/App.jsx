@@ -49,8 +49,6 @@ import AdminActivations from "./components/admin/AdminActivations";
 // Shared
 import LoadingSpinner from "./components/shared/LoadingSpinner";
 import ActivateAccount from "./components/user/ActivateAccount";
-import NotificationBell from "./components/shared/NotificationBell";
-import WelcomeBanner from "./components/shared/WelcomeBanner";
 import { requestNotificationPermission } from "./firebase/notificationService";
 
 const DashboardLayout = ({ children }) => {

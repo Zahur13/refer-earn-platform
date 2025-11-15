@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { functions } from "../../firebase/config";
 import {
   AlertCircle,
   CheckCircle,
@@ -10,7 +8,6 @@ import {
   Check,
   Shield,
   Loader,
-  CreditCard,
   QrCode,
 } from "lucide-react";
 import { formatCurrency } from "../../utils/helpers";

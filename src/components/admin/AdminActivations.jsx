@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { functions } from "../../firebase/config";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import {
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  User,
-  CreditCard,
-} from "lucide-react";
+
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { CheckCircle, XCircle, Clock, User, CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "../../utils/helpers";
 import { ACTIVATION_STATUS } from "../../utils/constants";
 import toast from "react-hot-toast";
