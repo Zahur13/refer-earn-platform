@@ -1,12 +1,13 @@
+// src/components/admin/AdminActivations.jsx
+
 import React, { useState, useEffect } from "react";
 import { db } from "../../firebase/config";
-
+import { approveActivation, rejectActivation } from "../../api/vercelFunctions";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { CheckCircle, XCircle, Clock, User, CreditCard } from "lucide-react";
+import { CheckCircle, XCircle, Clock, User } from "lucide-react";
 import { formatCurrency, formatDate } from "../../utils/helpers";
 import { ACTIVATION_STATUS } from "../../utils/constants";
 import toast from "react-hot-toast";
-import { approveActivation, rejectActivation } from "../../api/vercelFunctions";
 
 const AdminActivations = () => {
   const [activationRequests, setActivationRequests] = useState([]);
@@ -19,6 +20,10 @@ const AdminActivations = () => {
 
   useEffect(() => {
     fetchActivationRequests();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchActivationRequests, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -27,19 +32,26 @@ const AdminActivations = () => {
 
   const fetchActivationRequests = async () => {
     try {
-      const snapshot = await getDocs(
-        query(
-          collection(db, "activationRequests"),
-          orderBy("createdAt", "desc")
-        )
+      console.log("📥 Fetching activation requests...");
+
+      const q = query(
+        collection(db, "activationRequests"),
+        orderBy("createdAt", "desc")
       );
+
+      const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
+
+      console.log("✅ Fetched activation requests:", data.length);
+      console.log("Requests:", data);
+
       setActivationRequests(data);
     } catch (error) {
-      console.error("Error fetching activation requests:", error);
+      console.error("❌ Error fetching activation requests:", error);
+      toast.error("Failed to load activation requests");
     } finally {
       setLoading(false);
     }
@@ -67,7 +79,7 @@ const AdminActivations = () => {
     setProcessing(request.id);
 
     try {
-      // ✅ Call Vercel API
+      console.log("✅ Approving activation:", request.id);
       const result = await approveActivation(request.id);
 
       toast.success(result.message);
@@ -75,7 +87,7 @@ const AdminActivations = () => {
       setAdminNote("");
       fetchActivationRequests();
     } catch (error) {
-      console.error("Error approving activation:", error);
+      console.error("❌ Error approving activation:", error);
       toast.error(error.message || "Failed to approve activation");
     } finally {
       setProcessing(null);
@@ -97,7 +109,6 @@ const AdminActivations = () => {
     setProcessing(request.id);
 
     try {
-      // ✅ Call Vercel API
       const result = await rejectActivation(request.id, adminNote);
 
       toast.success(result.message);
@@ -105,23 +116,10 @@ const AdminActivations = () => {
       setAdminNote("");
       fetchActivationRequests();
     } catch (error) {
-      console.error("Error rejecting activation:", error);
+      console.error("❌ Error rejecting activation:", error);
       toast.error(error.message || "Failed to reject activation");
     } finally {
       setProcessing(null);
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case ACTIVATION_STATUS.PENDING:
-        return <Clock className="w-5 h-5 text-yellow-600" />;
-      case ACTIVATION_STATUS.APPROVED:
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case ACTIVATION_STATUS.REJECTED:
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return null;
     }
   };
 
@@ -152,6 +150,9 @@ const AdminActivations = () => {
         <h1 className="text-3xl font-bold text-gray-900">
           Activation Requests
         </h1>
+        <button onClick={fetchActivationRequests} className="btn-secondary">
+          🔄 Refresh
+        </button>
       </div>
 
       {/* Stats */}
@@ -225,6 +226,11 @@ const AdminActivations = () => {
           <div className="py-12 text-center card">
             <Clock className="mx-auto mb-4 w-16 h-16 text-gray-300" />
             <p className="text-gray-500">No activation requests found</p>
+            <p className="mt-2 text-sm text-gray-400">
+              {filter === "PENDING"
+                ? "Waiting for users to submit activation requests"
+                : `No ${filter.toLowerCase()} requests`}
+            </p>
           </div>
         ) : (
           filteredRequests.map((request) => (
@@ -260,16 +266,15 @@ const AdminActivations = () => {
                     </div>
                   </div>
 
-                  {/* Payment Details */}
+                  {/* Payment Details with UTR */}
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="flex items-center mb-2 text-sm font-semibold text-gray-700">
-                      <CreditCard className="mr-2 w-4 h-4" />
-                      Payment Details:
+                      💳 Payment Details:
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-gray-600">UTR Number:</span>
-                        <span className="ml-2 font-mono font-semibold">
+                        <span className="ml-2 font-mono text-lg font-semibold text-primary-600">
                           {request.utrNumber}
                         </span>
                       </div>
@@ -336,7 +341,7 @@ const AdminActivations = () => {
       {/* Review Modal */}
       {selectedRequest && (
         <div className="flex fixed inset-0 z-50 justify-center items-center p-4 bg-black bg-opacity-50">
-          <div className="w-full max-w-lg bg-white rounded-xl">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h3 className="mb-4 text-2xl font-bold text-gray-900">
                 Review Activation Request

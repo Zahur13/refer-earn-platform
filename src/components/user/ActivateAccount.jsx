@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { submitActivationRequest } from "../../api/vercelFunctions";
 import {
   AlertCircle,
   CheckCircle,
@@ -14,7 +15,6 @@ import { formatCurrency } from "../../utils/helpers";
 import { CONSTANTS } from "../../utils/constants";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import { submitActivationRequest } from "../../api/vercelFunctions";
 
 const ActivateAccount = () => {
   const { userData, refreshUserData } = useAuth();
@@ -27,7 +27,6 @@ const ActivateAccount = () => {
 
   const hasReferrer = userData?.referrerId ? true : false;
 
-  // Distribution calculation
   const distribution = hasReferrer
     ? { referrer: 10, admin: 10, user: 0 }
     : { admin: 10, user: 10, referrer: 0 };
@@ -57,12 +56,14 @@ const ActivateAccount = () => {
     setProcessing(true);
 
     try {
-      console.log("Submitting activation request...");
+      console.log("🚀 Submitting activation request...");
+      console.log("User ID:", userData.id);
+      console.log("UTR:", utrNumber);
 
       // ✅ Call Vercel API
       const result = await submitActivationRequest(utrNumber.toUpperCase());
 
-      console.log("✅ Success:", result);
+      console.log("✅ API Response:", result);
 
       toast.success(
         result.message || "Activation request submitted successfully!"
@@ -74,8 +75,23 @@ const ActivateAccount = () => {
         navigate("/user/dashboard");
       }, 2000);
     } catch (error) {
-      console.error("❌ Error:", error);
-      toast.error(error.message || "Failed to submit activation request");
+      console.error("❌ Submission Error:", error);
+
+      let errorMessage =
+        "Failed to submit activation request. Please try again.";
+
+      if (error.message.includes("already have a pending")) {
+        errorMessage =
+          "You already have a pending activation request. Please wait for admin approval.";
+      } else if (error.message.includes("already activated")) {
+        errorMessage = "Your account is already activated!";
+      } else if (error.message.includes("already been used")) {
+        errorMessage = "This UTR number has already been used.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
       setProcessing(false);
     } finally {
       setLoading(false);
@@ -111,7 +127,6 @@ const ActivateAccount = () => {
         <div className="py-12 text-center card">
           <div className="relative">
             <Loader className="mx-auto mb-4 w-16 h-16 animate-spin text-primary-600" />
-            <CheckCircle className="absolute top-0 right-1/2 w-6 h-6 text-green-500 transform translate-x-1/2" />
           </div>
           <h3 className="mb-2 text-xl font-bold text-gray-900">
             Submitting Request
