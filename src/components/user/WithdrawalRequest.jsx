@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { db } from "../../firebase/config";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { functions } from "../../firebase/config";
+import { createWithdrawalRequest } from "../../api/vercelFunctions";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import {
   DollarSign,
@@ -15,8 +14,6 @@ import {
 import { formatCurrency, formatDate, validateUPI } from "../../utils/helpers";
 import { CONSTANTS, WITHDRAWAL_STATUS } from "../../utils/constants";
 import toast from "react-hot-toast";
-import { createWithdrawalRequest } from '../../api/vercelFunctions';
-
 
 const WithdrawalRequest = () => {
   const { userData, refreshUserData } = useAuth();
@@ -50,53 +47,33 @@ const WithdrawalRequest = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const withdrawalAmount = Number(amount);
+    const withdrawalAmount = Number(amount);
 
-  // Validations
-  if (withdrawalAmount < CONSTANTS.MIN_WITHDRAWAL) {
-    toast.error(
-      `Minimum withdrawal amount is ${formatCurrency(CONSTANTS.MIN_WITHDRAWAL)}`
-    );
-    return;
-  }
+    // Validations
+    if (withdrawalAmount < CONSTANTS.MIN_WITHDRAWAL) {
+      toast.error(
+        `Minimum withdrawal amount is ${formatCurrency(
+          CONSTANTS.MIN_WITHDRAWAL
+        )}`
+      );
+      return;
+    }
 
-  if (withdrawalAmount > userData.wallet.balance) {
-    toast.error("Insufficient balance");
-    return;
-  }
+    if (withdrawalAmount > userData.wallet.balance) {
+      toast.error("Insufficient balance");
+      return;
+    }
 
-  if (withdrawalAmount > CONSTANTS.MAX_WITHDRAWAL) {
-    toast.error(
-      `Maximum withdrawal amount is ${formatCurrency(CONSTANTS.MAX_WITHDRAWAL)}`
-    );
-    return;
-  }
-
-  if (!validateUPI(upiId)) {
-    toast.error("Please enter a valid UPI ID (e.g., username@paytm)");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    // ✅ Call Vercel API
-    const result = await createWithdrawalRequest(withdrawalAmount, upiId.toLowerCase());
-
-    toast.success(result.message);
-    setAmount("");
-    setUpiId("");
-    fetchWithdrawals();
-    await refreshUserData();
-  } catch (error) {
-    console.error("Error submitting withdrawal:", error);
-    toast.error(error.message || "Failed to submit withdrawal request");
-  } finally {
-    setLoading(false);
-  }
-};
+    if (withdrawalAmount > CONSTANTS.MAX_WITHDRAWAL) {
+      toast.error(
+        `Maximum withdrawal amount is ${formatCurrency(
+          CONSTANTS.MAX_WITHDRAWAL
+        )}`
+      );
+      return;
+    }
 
     // Validate UPI ID
     if (!validateUPI(upiId)) {
@@ -107,16 +84,13 @@ const WithdrawalRequest = () => {
     setLoading(true);
 
     try {
-      const createWithdrawal = httpsCallable(
-        functions,
-        "createWithdrawalRequest"
+      // ✅ Call Vercel API
+      const result = await createWithdrawalRequest(
+        withdrawalAmount,
+        upiId.toLowerCase()
       );
-      const result = await createWithdrawal({
-        amount: withdrawalAmount,
-        upiId: upiId.toLowerCase(), // Store in lowercase
-      });
 
-      toast.success(result.data.message);
+      toast.success(result.message);
       setAmount("");
       setUpiId("");
       fetchWithdrawals();

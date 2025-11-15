@@ -79,129 +79,6 @@ const AdminWithdrawals = () => {
     setProcessing(withdrawal.id);
 
     try {
-      // Update withdrawal status
-      await updateDoc(doc(db, "withdrawals", withdrawal.id), {
-        status: WITHDRAWAL_STATUS.APPROVED,
-        approvedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        adminNote: adminNote || "Approved and processed",
-      });
-
-      // Deduct from user wallet
-      await updateDoc(doc(db, "users", withdrawal.userId), {
-        "wallet.balance": increment(-withdrawal.amount),
-        "wallet.lastUpdated": serverTimestamp(),
-      });
-
-      // Create transaction record
-      await addDoc(collection(db, "transactions"), {
-        userId: withdrawal.userId,
-        amount: withdrawal.amount,
-        type: TRANSACTION_TYPES.WITHDRAWAL,
-        status: TRANSACTION_STATUS.SUCCESS,
-        description: `Withdrawal to bank account ****${withdrawal.bankDetails.accountNumber.slice(
-          -4
-        )}`,
-        withdrawalId: withdrawal.id,
-        createdAt: serverTimestamp(),
-      });
-
-      toast.success("Withdrawal approved successfully");
-      setSelectedWithdrawal(null);
-      setAdminNote("");
-      fetchWithdrawals();
-    } catch (error) {
-      console.error("Error approving withdrawal:", error);
-      toast.error("Failed to approve withdrawal");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleReject = async (withdrawal) => {
-    if (!adminNote.trim()) {
-      toast.error("Please provide a reason for rejection");
-      return;
-    }
-
-    if (
-      !window.confirm(
-        `Reject withdrawal of ${formatCurrency(withdrawal.amount)}?`
-      )
-    ) {
-      return;
-    }
-
-    setProcessing(withdrawal.id);
-
-    try {
-      await updateDoc(doc(db, "withdrawals", withdrawal.id), {
-        status: WITHDRAWAL_STATUS.REJECTED,
-        rejectedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        adminNote: adminNote,
-      });
-
-      toast.success("Withdrawal rejected");
-      setSelectedWithdrawal(null);
-      setAdminNote("");
-      fetchWithdrawals();
-    } catch (error) {
-      console.error("Error rejecting withdrawal:", error);
-      toast.error("Failed to reject withdrawal");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case WITHDRAWAL_STATUS.PENDING:
-        return <Clock className="w-5 h-5 text-yellow-600" />;
-      case WITHDRAWAL_STATUS.APPROVED:
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case WITHDRAWAL_STATUS.REJECTED:
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case WITHDRAWAL_STATUS.PENDING:
-        return "bg-yellow-100 text-yellow-800";
-      case WITHDRAWAL_STATUS.APPROVED:
-        return "bg-green-100 text-green-800";
-      case WITHDRAWAL_STATUS.REJECTED:
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-96">
-        <div className="w-12 h-12 rounded-full border-b-2 animate-spin border-primary-600"></div>
-      </div>
-    );
-  }
-
-  const handleApprove = async (withdrawal) => {
-    if (
-      !window.confirm(
-        `Approve withdrawal of ${formatCurrency(withdrawal.amount)} for ${
-          withdrawal.userName
-        }?`
-      )
-    ) {
-      return;
-    }
-
-    setProcessing(withdrawal.id);
-
-    try {
       // ✅ Call Vercel API
       const result = await approveWithdrawal(
         withdrawal.id,
@@ -251,6 +128,40 @@ const AdminWithdrawals = () => {
       setProcessing(null);
     }
   };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case WITHDRAWAL_STATUS.PENDING:
+        return <Clock className="w-5 h-5 text-yellow-600" />;
+      case WITHDRAWAL_STATUS.APPROVED:
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case WITHDRAWAL_STATUS.REJECTED:
+        return <XCircle className="w-5 h-5 text-red-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case WITHDRAWAL_STATUS.PENDING:
+        return "bg-yellow-100 text-yellow-800";
+      case WITHDRAWAL_STATUS.APPROVED:
+        return "bg-green-100 text-green-800";
+      case WITHDRAWAL_STATUS.REJECTED:
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="w-12 h-12 rounded-full border-b-2 animate-spin border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
