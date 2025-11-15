@@ -44,12 +44,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
+    <div className="flex justify-center items-center px-4 py-12 min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-primary-600 p-3 rounded-full">
-              <LogIn className="h-8 w-8 text-white" />
+            <div className="p-3 rounded-full bg-primary-600">
+              <LogIn className="w-8 h-8 text-white" />
             </div>
           </div>
           <h2 className="text-3xl font-extrabold text-gray-900">
@@ -61,7 +61,7 @@ const Login = () => {
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Email Address
               </label>
               <div className="relative">
@@ -71,7 +71,7 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="john@example.com"
                   required
                 />
@@ -79,7 +79,7 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Password
               </label>
               <div className="relative">
@@ -89,7 +89,7 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="••••••••"
                   required
                 />
@@ -111,15 +111,15 @@ const Login = () => {
                 Don't have an account?{" "}
                 <Link
                   to="/register"
-                  className="text-primary-600 hover:text-primary-700 font-semibold"
+                  className="font-semibold text-primary-600 hover:text-primary-700"
                 >
                   Sign up
                 </Link>
               </p>
             </div>
 
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800 font-semibold mb-2">
+            {/* <div className="p-4 mt-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="mb-2 text-xs font-semibold text-blue-800">
                 Demo Credentials:
               </p>
               <p className="text-xs text-blue-700">
@@ -128,7 +128,7 @@ const Login = () => {
               <p className="text-xs text-blue-700">
                 User: user@example.com / user123
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
