@@ -24,14 +24,20 @@ service cloud.firestore {
       // Users can only read their own data, admins can read all
       allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
       
-      // Only allow user creation during signup
+      // Allow user creation - supports BOTH direct signup and referral signup
       allow create: if request.auth.uid == userId &&
                       request.resource.data.role == 'user' &&
                       request.resource.data.wallet.balance == 0 &&
-                      !request.resource.data.isReferralActive;
+                      !request.resource.data.isReferralActive &&
+                      // Referral code (required for all users)
+                      request.resource.data.referralCode is string &&
+                      // Referrer info (optional - null for direct signup, string for referral)
+                      (request.resource.data.referredBy == null || 
+                       request.resource.data.referredBy is string) &&
+                      (request.resource.data.referrerId == null || 
+                       request.resource.data.referrerId is string);
       
       // Users can only update safe fields (name, phone, etc.)
-      // Critical fields can ONLY be updated by Cloud Functions
       allow update: if isOwner(userId) && 
                       !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                         'role', 
@@ -52,8 +58,11 @@ service cloud.firestore {
     match /referralCodes/{code} {
       // Anyone can read to validate codes
       allow read: if true;
-      // Only Cloud Functions can create
-      allow create: if false;
+      
+      // Allow users to create their OWN referral code during registration
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid;
+      
       allow update, delete: if false;
     }
     
@@ -64,11 +73,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
       
-      // Only Cloud Functions can create (not direct client writes)
-      allow create: if false;
+      // Users can create their own activation requests
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.status == 'PENDING';
       
-      // Only Cloud Functions can update
-      allow update: if false;
+      // Only admins can update (approve/reject)
+      allow update: if isAdmin();
       
       allow delete: if false;
     }
