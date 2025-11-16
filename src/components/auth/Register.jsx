@@ -76,7 +76,7 @@ const Register = () => {
     console.log("🔍 Validating referral code:", codeUpper);
 
     try {
-      // Step 1: Check if referral code document exists
+      // Check if referral code document exists
       console.log("📄 Checking referralCodes collection...");
       const codeRef = doc(db, "referralCodes", codeUpper);
       const codeSnap = await getDoc(codeRef);
@@ -96,36 +96,13 @@ const Register = () => {
       const codeData = codeSnap.data();
       console.log("✅ Referral code data:", codeData);
 
-      // Step 2: Get referrer user data
-      console.log("👤 Fetching referrer user data...");
-      const referrerRef = doc(db, "users", codeData.userId);
-      const referrerSnap = await getDoc(referrerRef);
-
-      if (!referrerSnap.exists()) {
-        console.log("❌ Referrer user not found");
-        setCodeValidation({
-          isValid: false,
-          message: "Referrer account not found",
-          referrerName: "",
-          error: "User not found",
-        });
-        setValidatingCode(false);
-        return;
-      }
-
-      const referrerData = referrerSnap.data();
-      console.log("✅ Referrer data:", {
-        name: referrerData.name,
-        isActive: referrerData.isReferralActive,
-      });
-
-      // Step 3: Check if referrer is active
-      if (!referrerData.isReferralActive) {
+      // ✅ NEW: Check isActive directly from referralCodes document
+      if (!codeData.isActive) {
         console.log("⚠️ Referrer account not active");
         setCodeValidation({
           isValid: false,
-          message: `${referrerData.name}'s account is not activated yet`,
-          referrerName: referrerData.name,
+          message: `${codeData.userName}'s account is not activated yet`,
+          referrerName: codeData.userName,
           error: "Not active",
         });
         setValidatingCode(false);
@@ -136,8 +113,8 @@ const Register = () => {
       console.log("✅ Referral code is valid!");
       setCodeValidation({
         isValid: true,
-        message: `You will be referred by ${referrerData.name}`,
-        referrerName: referrerData.name,
+        message: `You will be referred by ${codeData.userName}`,
+        referrerName: codeData.userName,
         error: null,
       });
     } catch (error) {
@@ -202,7 +179,6 @@ const Register = () => {
       return;
     }
 
-    // If referral code provided, must be valid
     const trimmedCode = formData.referralCode.trim();
     if (trimmedCode && codeValidation.isValid !== true) {
       toast.error("Please enter a valid referral code or leave it empty");
@@ -221,34 +197,46 @@ const Register = () => {
         const codeUpper = trimmedCode.toUpperCase();
         console.log("🔍 Using referral code:", codeUpper);
 
-        const codeRef = doc(db, "referralCodes", codeUpper);
-        const codeSnap = await getDoc(codeRef);
+        try {
+          const codeRef = doc(db, "referralCodes", codeUpper);
+          const codeSnap = await getDoc(codeRef);
 
-        if (codeSnap.exists()) {
-          referrerId = codeSnap.data().userId;
-          referredBy = codeUpper;
-          console.log("✅ Referrer ID:", referrerId);
+          if (codeSnap.exists()) {
+            referrerId = codeSnap.data().userId;
+            referredBy = codeUpper;
+            console.log("✅ Referrer ID:", referrerId);
+          }
+        } catch (error) {
+          console.error("❌ Error fetching referral code:", error);
+          console.error("Error code:", error.code);
+          console.error("Error message:", error.message);
+          throw new Error("Failed to validate referral code");
         }
       }
 
       // Create Firebase Auth user
       console.log("👤 Creating auth user...");
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
+      let userCredential;
+      try {
+        userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+        console.log("✅ Auth user created:", userCredential.user.uid);
+      } catch (error) {
+        console.error("❌ Auth creation failed:", error);
+        throw error;
+      }
 
       const user = userCredential.user;
-      console.log("✅ Auth user created:", user.uid);
 
       // Generate unique referral code
       const myReferralCode = generateReferralCode(formData.name, user.uid);
       console.log("🎫 Generated referral code:", myReferralCode);
 
-      // Create user document
-      console.log("📄 Creating user document...");
-      await setDoc(doc(db, "users", user.uid), {
+      // Prepare user data
+      const userData = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -268,16 +256,50 @@ const Register = () => {
         role: "user",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      };
+
+      console.log("📄 User data to write:", {
+        ...userData,
+        wallet: { balance: 0, lastUpdated: "[serverTimestamp]" },
+        createdAt: "[serverTimestamp]",
+        updatedAt: "[serverTimestamp]",
       });
-      console.log("✅ User document created");
+
+      // Create user document
+      console.log("📄 Creating user document...");
+      try {
+        await setDoc(doc(db, "users", user.uid), userData);
+        console.log("✅ User document created successfully");
+      } catch (error) {
+        console.error("❌ FAILED: User document creation");
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        console.error("Full error:", error);
+
+        // Delete auth user if Firestore fails
+        await user.delete();
+        throw new Error(`Failed to create user profile: ${error.message}`);
+      }
 
       // Create referral code mapping
       console.log("🎫 Creating referral code mapping...");
-      await setDoc(doc(db, "referralCodes", myReferralCode), {
-        userId: user.uid,
-        createdAt: serverTimestamp(),
-      });
-      console.log("✅ Referral code mapping created");
+      try {
+        await setDoc(doc(db, "referralCodes", myReferralCode), {
+          userId: user.uid,
+          userName: formData.name, // ✅ ADD THIS
+          isActive: false, // ✅ ADD THIS
+          createdAt: serverTimestamp(),
+        });
+        console.log("✅ Referral code mapping created");
+      } catch (error) {
+        console.error("❌ FAILED: Referral code creation");
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        console.error("Full error:", error);
+
+        // This is less critical, continue anyway
+        console.warn("⚠️ Continuing despite referral code error");
+      }
 
       toast.success("Account created successfully!");
       console.log("🎉 Registration complete!");
@@ -292,6 +314,9 @@ const Register = () => {
         toast.error("Password is too weak");
       } else if (error.code === "auth/invalid-email") {
         toast.error("Invalid email address");
+      } else if (error.code === "permission-denied") {
+        toast.error("Permission denied. Please contact support.");
+        console.error("🚨 PERMISSION DENIED - Check Firestore rules!");
       } else {
         toast.error(error.message || "Registration failed");
       }
@@ -299,14 +324,13 @@ const Register = () => {
       setLoading(false);
     }
   };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
+    <div className="flex justify-center items-center px-4 py-12 min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
-            <div className="bg-primary-600 p-3 rounded-full">
-              <UserPlus className="h-8 w-8 text-white" />
+            <div className="p-3 rounded-full bg-primary-600">
+              <UserPlus className="w-8 h-8 text-white" />
             </div>
           </div>
           <h2 className="text-3xl font-extrabold text-gray-900">
@@ -321,7 +345,7 @@ const Register = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Full Name *
               </label>
               <div className="relative">
@@ -331,7 +355,7 @@ const Register = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="John Doe"
                   required
                 />
@@ -340,7 +364,7 @@ const Register = () => {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Email Address *
               </label>
               <div className="relative">
@@ -350,7 +374,7 @@ const Register = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="john@example.com"
                   required
                 />
@@ -359,7 +383,7 @@ const Register = () => {
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Phone Number *
               </label>
               <div className="relative">
@@ -369,7 +393,7 @@ const Register = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="9876543210"
                   maxLength="10"
                   required
@@ -379,7 +403,7 @@ const Register = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Password *
               </label>
               <div className="relative">
@@ -389,7 +413,7 @@ const Register = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="••••••••"
                   required
                 />
@@ -398,7 +422,7 @@ const Register = () => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Confirm Password *
               </label>
               <div className="relative">
@@ -408,7 +432,7 @@ const Register = () => {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="pl-10 input-field"
                   placeholder="••••••••"
                   required
                 />
@@ -417,7 +441,7 @@ const Register = () => {
 
             {/* Referral Code */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Referral Code (Optional)
               </label>
               <div className="relative">
@@ -473,11 +497,11 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="mt-6 w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <span className="flex items-center justify-center">
-                  <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                <span className="flex justify-center items-center">
+                  <Loader className="mr-3 -ml-1 w-5 h-5 text-white animate-spin" />
                   Creating Account...
                 </span>
               ) : (
@@ -491,7 +515,7 @@ const Register = () => {
               Already have an account?{" "}
               <Link
                 to="/login"
-                className="text-primary-600 hover:text-primary-700 font-semibold"
+                className="font-semibold text-primary-600 hover:text-primary-700"
               >
                 Sign in
               </Link>

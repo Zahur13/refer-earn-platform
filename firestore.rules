@@ -24,20 +24,18 @@ service cloud.firestore {
       // Users can only read their own data, admins can read all
       allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
       
-      // Allow user creation - supports BOTH direct signup and referral signup
+      // Allow user creation - supports BOTH direct and referral signup
       allow create: if request.auth.uid == userId &&
                       request.resource.data.role == 'user' &&
                       request.resource.data.wallet.balance == 0 &&
                       !request.resource.data.isReferralActive &&
-                      // Referral code (required for all users)
                       request.resource.data.referralCode is string &&
-                      // Referrer info (optional - null for direct signup, string for referral)
                       (request.resource.data.referredBy == null || 
                        request.resource.data.referredBy is string) &&
                       (request.resource.data.referrerId == null || 
                        request.resource.data.referrerId is string);
       
-      // Users can only update safe fields (name, phone, etc.)
+      // Users can only update safe fields
       allow update: if isOwner(userId) && 
                       !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                         'role', 
@@ -56,41 +54,42 @@ service cloud.firestore {
     // ============ REFERRAL CODES COLLECTION ============
     
     match /referralCodes/{code} {
-      // Anyone can read to validate codes
+      // ✅ CHANGED: Allow anyone to read (for validation during registration)
       allow read: if true;
       
-      // Allow users to create their OWN referral code during registration
+      // Allow users to create their OWN referral code
       allow create: if isSignedIn() && 
-                      request.resource.data.userId == request.auth.uid;
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.userName is string &&
+                      request.resource.data.isActive is bool;
       
-      allow update, delete: if false;
+      // Allow users to update their own referral code status
+      allow update: if isSignedIn() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive']);
+      
+      allow delete: if false;
     }
     
     // ============ ACTIVATION REQUESTS COLLECTION ============
     
     match /activationRequests/{requestId} {
-      // Users can read their own requests, admins can read all
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
       
-      // Users can create their own activation requests
       allow create: if isSignedIn() && 
                       request.resource.data.userId == request.auth.uid &&
                       request.resource.data.status == 'PENDING';
       
-      // Only admins can update (approve/reject)
       allow update: if isAdmin();
-      
       allow delete: if false;
     }
     
     // ============ TRANSACTIONS COLLECTION ============
     
     match /transactions/{transactionId} {
-      // Users can read their own, admins can read all
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
-      // Only Cloud Functions can create transactions
       allow create: if false;
       allow update, delete: if false;
     }
@@ -98,12 +97,9 @@ service cloud.firestore {
     // ============ WITHDRAWALS COLLECTION ============
     
     match /withdrawals/{withdrawalId} {
-      // Users can read their own, admins can read all
       allow read: if isSignedIn() && 
                     (request.auth.uid == resource.data.userId || isAdmin());
-      // Only Cloud Functions can create withdrawals
       allow create: if false;
-      // Only Cloud Functions can update
       allow update: if false;
       allow delete: if false;
     }
@@ -112,7 +108,6 @@ service cloud.firestore {
     
     match /adminWithdrawals/{withdrawalId} {
       allow read: if isAdmin();
-      // Only Cloud Functions can create
       allow create: if false;
       allow update: if false;
       allow delete: if false;
@@ -122,7 +117,6 @@ service cloud.firestore {
     
     match /adminStats/{document} {
       allow read: if isAdmin();
-      // Only Cloud Functions can write
       allow create, update: if false;
       allow delete: if false;
     }
@@ -132,16 +126,14 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && 
                     request.auth.uid == resource.data.userId;
-      // Only Cloud Functions can create
       allow create: if false;
-      // Users can mark as read
       allow update: if isSignedIn() && 
                       request.auth.uid == resource.data.userId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
       allow delete: if false;
     }
     
-    // ============ TEMP USER DATA (for registration) ============
+    // ============ TEMP USER DATA ============
     
     match /tempUserData/{email} {
       allow read, write: if isSignedIn() && request.auth.token.email == email;

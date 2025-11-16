@@ -99,6 +99,15 @@ export const processActivationPayment = async (
       activatedAt: serverTimestamp(),
     });
     console.log("✅ User activated");
+    try {
+      const referralCodeRef = doc(db, "referralCodes", userData.referralCode);
+      await updateDoc(referralCodeRef, {
+        isActive: true,
+      });
+      console.log("✅ Referral code activated");
+    } catch (error) {
+      console.error("⚠️ Could not activate referral code:", error);
+    }
 
     // Create transaction for user
     await addDoc(collection(db, "transactions"), {
