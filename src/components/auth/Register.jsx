@@ -73,11 +73,11 @@ const Register = () => {
 
     setValidatingCode(true);
     const codeUpper = code.toUpperCase();
-    console.log("🔍 Validating referral code:", codeUpper);
+    // console.log("🔍 Validating referral code:", codeUpper);
 
     try {
       // Check if referral code document exists
-      console.log("📄 Checking referralCodes collection...");
+      // console.log("📄 Checking referralCodes collection...");
       const codeRef = doc(db, "referralCodes", codeUpper);
       const codeSnap = await getDoc(codeRef);
 
@@ -94,15 +94,20 @@ const Register = () => {
       }
 
       const codeData = codeSnap.data();
-      console.log("✅ Referral code data:", codeData);
+      // console.log("✅ Referral code data:", codeData);
 
       // ✅ NEW: Check isActive directly from referralCodes document
+      // ✅ FIXED CODE
       if (!codeData.isActive) {
         console.log("⚠️ Referrer account not active");
+
+        // ✅ Handle undefined userName
+        const displayName = codeData.userName || "This user";
+
         setCodeValidation({
           isValid: false,
-          message: `${codeData.userName}'s account is not activated yet`,
-          referrerName: codeData.userName,
+          message: `${displayName}'s account is not activated yet`, // ← Now shows "This user" if userName missing
+          referrerName: codeData.userName || "Unknown",
           error: "Not active",
         });
         setValidatingCode(false);
@@ -195,7 +200,7 @@ const Register = () => {
       // Get referrer details if code provided and valid
       if (trimmedCode && codeValidation.isValid === true) {
         const codeUpper = trimmedCode.toUpperCase();
-        console.log("🔍 Using referral code:", codeUpper);
+        // console.log("🔍 Using referral code:", codeUpper);
 
         try {
           const codeRef = doc(db, "referralCodes", codeUpper);
@@ -204,7 +209,7 @@ const Register = () => {
           if (codeSnap.exists()) {
             referrerId = codeSnap.data().userId;
             referredBy = codeUpper;
-            console.log("✅ Referrer ID:", referrerId);
+            // console.log("✅ Referrer ID:", referrerId);
           }
         } catch (error) {
           console.error("❌ Error fetching referral code:", error);
@@ -223,7 +228,7 @@ const Register = () => {
           formData.email,
           formData.password
         );
-        console.log("✅ Auth user created:", userCredential.user.uid);
+        // console.log("✅ Auth user created:", userCredential.user.uid);
       } catch (error) {
         console.error("❌ Auth creation failed:", error);
         throw error;
@@ -233,7 +238,7 @@ const Register = () => {
 
       // Generate unique referral code
       const myReferralCode = generateReferralCode(formData.name, user.uid);
-      console.log("🎫 Generated referral code:", myReferralCode);
+      // console.log("🎫 Generated referral code:", myReferralCode);
 
       // Prepare user data
       const userData = {
@@ -258,12 +263,12 @@ const Register = () => {
         updatedAt: serverTimestamp(),
       };
 
-      console.log("📄 User data to write:", {
-        ...userData,
-        wallet: { balance: 0, lastUpdated: "[serverTimestamp]" },
-        createdAt: "[serverTimestamp]",
-        updatedAt: "[serverTimestamp]",
-      });
+      // console.log("📄 User data to write:", {
+      //   ...userData,
+      //   wallet: { balance: 0, lastUpdated: "[serverTimestamp]" },
+      //   createdAt: "[serverTimestamp]",
+      //   updatedAt: "[serverTimestamp]",
+      // });
 
       // Create user document
       console.log("📄 Creating user document...");
@@ -282,7 +287,7 @@ const Register = () => {
       }
 
       // Create referral code mapping
-      console.log("🎫 Creating referral code mapping...");
+      // console.log("🎫 Creating referral code mapping...");
       try {
         await setDoc(doc(db, "referralCodes", myReferralCode), {
           userId: user.uid,
@@ -290,7 +295,7 @@ const Register = () => {
           isActive: false, // ✅ ADD THIS
           createdAt: serverTimestamp(),
         });
-        console.log("✅ Referral code mapping created");
+        // console.log("✅ Referral code mapping created");
       } catch (error) {
         console.error("❌ FAILED: Referral code creation");
         console.error("Error code:", error.code);

@@ -51,10 +51,10 @@ export const processActivationPayment = async (
   paymentDetails
 ) => {
   try {
-    console.log("🔄 Processing activation payment...");
-    console.log("User ID:", userId);
-    console.log("Amount:", amount);
-    console.log("Payment Details:", paymentDetails);
+    // console.log("🔄 Processing activation payment...");
+    // console.log("User ID:", userId);
+    // console.log("Amount:", amount);
+    // console.log("Payment Details:", paymentDetails);
 
     // Get user data
     const userRef = doc(db, "users", userId);
@@ -89,7 +89,7 @@ export const processActivationPayment = async (
       referrerBonus = 0;
     }
 
-    console.log("💰 Distribution:", { userCredit, referrerBonus, adminShare });
+    // console.log("💰 Distribution:", { userCredit, referrerBonus, adminShare });
 
     // Update user wallet and activate
     await updateDoc(userRef, {

@@ -87,10 +87,16 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      await db.collection("referralCodes").doc(referralCode).set({
-        userId: user.uid,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+      // ✅ FIXED CODE
+      await db
+        .collection("referralCodes")
+        .doc(referralCode)
+        .set({
+          userId: user.uid,
+          userName: tempData.name || user.displayName || "User",
+          isActive: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
 
       await db.collection("notifications").add({
         userId: user.uid,
@@ -105,7 +111,7 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
         await tempDataRef.delete();
       }
 
-      console.log(`✅ User profile created for ${user.email}`);
+      // console.log(`✅ User profile created for ${user.email}`);
     }
   } catch (error) {
     console.error("Error creating user profile:", error);
@@ -130,7 +136,7 @@ exports.submitActivationRequest = functions.https.onCall(
     const { utrNumber } = data;
     const userId = context.auth.uid;
 
-    console.log("📝 Activation request received:", { userId, utrNumber });
+    // console.log("📝 Activation request received:", { userId, utrNumber });
 
     // 2. Validate UTR
     if (!utrNumber || utrNumber.length < 12) {
@@ -150,7 +156,7 @@ exports.submitActivationRequest = functions.https.onCall(
       }
 
       const userData = userDoc.data();
-      console.log("✅ User found:", userData.name);
+      // console.log("✅ User found:", userData.name);
 
       // 4. Check if already activated
       if (userData.isReferralActive) {
@@ -201,7 +207,7 @@ exports.submitActivationRequest = functions.https.onCall(
             .doc(userData.referrerId)
             .get();
           referrerName = referrerDoc.exists ? referrerDoc.data().name : null;
-          console.log("✅ Referrer found:", referrerName);
+          // console.log("✅ Referrer found:", referrerName);
         } catch (err) {
           console.error("⚠️ Error fetching referrer:", err);
         }
@@ -223,7 +229,7 @@ exports.submitActivationRequest = functions.https.onCall(
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      console.log("📄 Creating activation request:", activationData);
+      // console.log("📄 Creating activation request:", activationData);
 
       await db.collection("activationRequests").add(activationData);
 
@@ -331,6 +337,30 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
       isReferralActive: true,
       activatedAt: FieldValue.serverTimestamp(),
     });
+
+    // ✅✅✅ ADD THIS CODE HERE ✅✅✅
+    // Update referral code to active
+    try {
+      const userDataDoc = await db.collection("users").doc(userId).get();
+      const activatedUser = userDataDoc.data();
+
+      if (activatedUser && activatedUser.referralCode) {
+        const referralCodeRef = db
+          .collection("referralCodes")
+          .doc(activatedUser.referralCode);
+        batch.update(referralCodeRef, {
+          isActive: true,
+          userName: requestData.userName || activatedUser.name,
+        });
+        // console.log(
+        //   `✅ Activated referral code: ${activatedUser.referralCode}`
+        // );
+      }
+    } catch (codeError) {
+      console.error("⚠️ Could not update referral code:", codeError);
+      // Don't fail the whole activation if this fails
+    }
+    // ✅✅✅ END OF NEW CODE ✅✅✅
 
     // Create user transaction
     const userTxnRef = db.collection("transactions").doc();
@@ -737,7 +767,7 @@ exports.verifyPayment = functions.https.onCall(async (data, context) => {
     );
   }
 
-  console.log("Verifying payment:", { utrNumber, amount });
+  // console.log("Verifying payment:", { utrNumber, amount });
 
   return {
     verified: true,
