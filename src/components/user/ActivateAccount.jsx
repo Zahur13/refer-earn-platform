@@ -63,7 +63,7 @@ const ActivateAccount = () => {
       // ✅ Call Vercel API
       const result = await submitActivationRequest(utrNumber.toUpperCase());
 
-      console.log("✅ API Response:", result);
+      // console.log("✅ API Response:", result);
 
       toast.success(
         result.message || "Activation request submitted successfully!"

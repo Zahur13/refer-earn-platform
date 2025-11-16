@@ -1,7 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-// Initialize Admin SDK
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -18,9 +17,6 @@ const CONSTANTS = {
 
 // ============ HELPER FUNCTIONS ============
 
-/**
- * Get admin user ID
- */
 async function getAdminUserId() {
   const adminSnapshot = await db
     .collection("users")
@@ -35,9 +31,6 @@ async function getAdminUserId() {
   return adminSnapshot.docs[0].id;
 }
 
-/**
- * Generate referral code
- */
 function generateReferralCode(name, uid) {
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   const namePrefix = name.substring(0, 3).toUpperCase();
@@ -47,9 +40,6 @@ function generateReferralCode(name, uid) {
 
 // ============ USER CREATION ============
 
-/**
- * Triggered when a new user is created in Firebase Auth
- */
 exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
   try {
     const userRef = db.collection("users").doc(user.uid);
@@ -87,7 +77,6 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // ✅ FIXED CODE
       await db
         .collection("referralCodes")
         .doc(referralCode)
@@ -110,8 +99,6 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
       if (tempDataDoc.exists) {
         await tempDataRef.delete();
       }
-
-      // console.log(`✅ User profile created for ${user.email}`);
     }
   } catch (error) {
     console.error("Error creating user profile:", error);
@@ -120,12 +107,8 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
 
 // ============ ACTIVATION SYSTEM ============
 
-/**
- * User submits activation request - FIXED VERSION
- */
 exports.submitActivationRequest = functions.https.onCall(
   async (data, context) => {
-    // 1. Check authentication
     if (!context.auth) {
       throw new functions.https.HttpsError(
         "unauthenticated",
@@ -136,9 +119,6 @@ exports.submitActivationRequest = functions.https.onCall(
     const { utrNumber } = data;
     const userId = context.auth.uid;
 
-    // console.log("📝 Activation request received:", { userId, utrNumber });
-
-    // 2. Validate UTR
     if (!utrNumber || utrNumber.length < 12) {
       throw new functions.https.HttpsError(
         "invalid-argument",
@@ -147,27 +127,21 @@ exports.submitActivationRequest = functions.https.onCall(
     }
 
     try {
-      // 3. Get user data
       const userDoc = await db.collection("users").doc(userId).get();
 
       if (!userDoc.exists) {
-        console.error("❌ User not found:", userId);
         throw new functions.https.HttpsError("not-found", "User not found");
       }
 
       const userData = userDoc.data();
-      // console.log("✅ User found:", userData.name);
 
-      // 4. Check if already activated
       if (userData.isReferralActive) {
-        console.log("⚠️ User already activated");
         throw new functions.https.HttpsError(
           "already-exists",
           "Account already activated"
         );
       }
 
-      // 5. Check for duplicate pending requests
       const existingRequests = await db
         .collection("activationRequests")
         .where("userId", "==", userId)
@@ -175,21 +149,18 @@ exports.submitActivationRequest = functions.https.onCall(
         .get();
 
       if (!existingRequests.empty) {
-        console.log("⚠️ Pending request already exists");
         throw new functions.https.HttpsError(
           "already-exists",
           "You already have a pending activation request"
         );
       }
 
-      // 6. Check for duplicate UTR
       const duplicateUTR = await db
         .collection("activationRequests")
         .where("utrNumber", "==", utrNumber.toUpperCase())
         .get();
 
       if (!duplicateUTR.empty) {
-        console.log("⚠️ UTR already used");
         throw new functions.https.HttpsError(
           "already-exists",
           "This UTR number has already been used"
@@ -199,7 +170,6 @@ exports.submitActivationRequest = functions.https.onCall(
       const hasReferrer = userData.referrerId ? true : false;
       let referrerName = null;
 
-      // 7. Get referrer name if exists
       if (hasReferrer) {
         try {
           const referrerDoc = await db
@@ -207,13 +177,11 @@ exports.submitActivationRequest = functions.https.onCall(
             .doc(userData.referrerId)
             .get();
           referrerName = referrerDoc.exists ? referrerDoc.data().name : null;
-          // console.log("✅ Referrer found:", referrerName);
         } catch (err) {
           console.error("⚠️ Error fetching referrer:", err);
         }
       }
 
-      // 8. Create activation request
       const activationData = {
         userId: userId,
         userName: userData.name,
@@ -229,27 +197,17 @@ exports.submitActivationRequest = functions.https.onCall(
         updatedAt: FieldValue.serverTimestamp(),
       };
 
-      // console.log("📄 Creating activation request:", activationData);
-
       await db.collection("activationRequests").add(activationData);
 
-      console.log("✅ Activation request created successfully");
-
-      // 9. Send notification to user
-      try {
-        await db.collection("notifications").add({
-          userId: userId,
-          type: "ACTIVATION_SUBMITTED",
-          title: "Activation Request Submitted",
-          message:
-            "Your payment is being verified. You'll be notified once approved.",
-          read: false,
-          createdAt: FieldValue.serverTimestamp(),
-        });
-        console.log("✅ Notification sent");
-      } catch (notifError) {
-        console.error("⚠️ Notification error (non-critical):", notifError);
-      }
+      await db.collection("notifications").add({
+        userId: userId,
+        type: "ACTIVATION_SUBMITTED",
+        title: "Activation Request Submitted",
+        message:
+          "Your payment is being verified. You'll be notified once approved.",
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
 
       return {
         success: true,
@@ -257,14 +215,9 @@ exports.submitActivationRequest = functions.https.onCall(
           "Activation request submitted! Admin will verify your payment.",
       };
     } catch (error) {
-      console.error("❌ Activation request error:", error);
-
-      // Re-throw HttpsError as-is
       if (error instanceof functions.https.HttpsError) {
         throw error;
       }
-
-      // Wrap other errors
       throw new functions.https.HttpsError(
         "internal",
         `Error: ${error.message}`
@@ -273,9 +226,6 @@ exports.submitActivationRequest = functions.https.onCall(
   }
 );
 
-/**
- * Admin approves activation
- */
 exports.approveActivation = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -327,6 +277,12 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
       referrerBonus = 0;
     }
 
+    const userDataDoc = await db.collection("users").doc(userId).get();
+    if (!userDataDoc.exists) {
+      throw new functions.https.HttpsError("not-found", "User not found");
+    }
+    const userData = userDataDoc.data();
+
     const batch = db.batch();
 
     // Update user
@@ -337,30 +293,6 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
       isReferralActive: true,
       activatedAt: FieldValue.serverTimestamp(),
     });
-
-    // ✅✅✅ ADD THIS CODE HERE ✅✅✅
-    // Update referral code to active
-    try {
-      const userDataDoc = await db.collection("users").doc(userId).get();
-      const activatedUser = userDataDoc.data();
-
-      if (activatedUser && activatedUser.referralCode) {
-        const referralCodeRef = db
-          .collection("referralCodes")
-          .doc(activatedUser.referralCode);
-        batch.update(referralCodeRef, {
-          isActive: true,
-          userName: requestData.userName || activatedUser.name,
-        });
-        // console.log(
-        //   `✅ Activated referral code: ${activatedUser.referralCode}`
-        // );
-      }
-    } catch (codeError) {
-      console.error("⚠️ Could not update referral code:", codeError);
-      // Don't fail the whole activation if this fails
-    }
-    // ✅✅✅ END OF NEW CODE ✅✅✅
 
     // Create user transaction
     const userTxnRef = db.collection("transactions").doc();
@@ -467,7 +399,31 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    // COMMIT BATCH FIRST
     await batch.commit();
+
+    // ✅ UPDATE REFERRAL CODE AFTER BATCH (SEPARATELY)
+    if (userData.referralCode) {
+      try {
+        const referralCodeRef = db
+          .collection("referralCodes")
+          .doc(userData.referralCode);
+
+        await referralCodeRef.set(
+          {
+            userId: userId,
+            userName: requestData.userName || userData.name,
+            isActive: true,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        console.log(`✅ Referral code ${userData.referralCode} activated`);
+      } catch (refError) {
+        console.error(`❌ Failed to update referral code:`, refError);
+      }
+    }
 
     return { success: true, message: "Activation approved successfully" };
   } catch (error) {
@@ -476,9 +432,6 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
   }
 });
 
-/**
- * Admin rejects activation
- */
 exports.rejectActivation = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -534,9 +487,6 @@ exports.rejectActivation = functions.https.onCall(async (data, context) => {
 
 // ============ WITHDRAWAL SYSTEM ============
 
-/**
- * User creates withdrawal request with UPI
- */
 exports.createWithdrawalRequest = functions.https.onCall(
   async (data, context) => {
     if (!context.auth) {
@@ -604,9 +554,6 @@ exports.createWithdrawalRequest = functions.https.onCall(
   }
 );
 
-/**
- * Admin approves withdrawal
- */
 exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -689,9 +636,6 @@ exports.approveWithdrawal = functions.https.onCall(async (data, context) => {
   }
 });
 
-/**
- * Admin rejects withdrawal
- */
 exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -745,35 +689,4 @@ exports.rejectWithdrawal = functions.https.onCall(async (data, context) => {
   } catch (error) {
     throw new functions.https.HttpsError("internal", error.message);
   }
-});
-
-/**
- * Verify payment UTR
- */
-exports.verifyPayment = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "User must be authenticated"
-    );
-  }
-
-  const { utrNumber, amount } = data;
-
-  if (!utrNumber || utrNumber.length < 12) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Invalid UTR number"
-    );
-  }
-
-  // console.log("Verifying payment:", { utrNumber, amount });
-
-  return {
-    verified: true,
-    message: "Payment verified successfully",
-    utrNumber: utrNumber,
-    amount: amount,
-    timestamp: new Date().toISOString(),
-  };
 });

@@ -29,11 +29,11 @@ service cloud.firestore {
     // ============ REFERRAL CODES COLLECTION ============
     
     match /referralCodes/{code} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow write: if request.auth != null;
-      allow update, delete: if false;
-    }
+  allow read: if true;
+  allow create: if isSignedIn();
+  allow update: if true;  // ✅ Allow Cloud Functions to update
+  allow delete: if false;  // Keep deletes blocked
+}
     
     // ============ ACTIVATION REQUESTS COLLECTION ============
     

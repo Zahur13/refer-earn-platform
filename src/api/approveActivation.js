@@ -30,17 +30,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log("🔵 approveActivation API called");
-
     const decodedToken = await verifyAuth(req);
     const adminUserId = decodedToken.uid;
-
-    console.log("🔵 Admin user ID:", adminUserId);
 
     // Verify admin role
     const adminDoc = await db.collection("users").doc(adminUserId).get();
     if (!adminDoc.exists || adminDoc.data().role !== "admin") {
-      console.log("❌ Not an admin");
       return res.status(403).json({ error: "Admin access required" });
     }
 
@@ -50,8 +45,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Request ID is required" });
     }
 
-    console.log("🔵 Request ID:", requestId);
-
     // Get activation request
     const requestDoc = await db
       .collection("activationRequests")
@@ -59,22 +52,17 @@ module.exports = async (req, res) => {
       .get();
 
     if (!requestDoc.exists) {
-      console.log("❌ Request not found");
       return res.status(404).json({ error: "Request not found" });
     }
 
     const requestData = requestDoc.data();
 
     if (requestData.status !== "PENDING") {
-      console.log("❌ Request already processed:", requestData.status);
       return res.status(400).json({ error: "Request already processed" });
     }
 
     const userId = requestData.userId;
     const hasReferrer = requestData.hasReferrer;
-
-    console.log("🔵 User ID:", userId);
-    console.log("🔵 Has referrer:", hasReferrer);
 
     let userCredit = 0;
     let referrerBonus = 0;
@@ -93,15 +81,9 @@ module.exports = async (req, res) => {
     // Get user data
     const userDataDoc = await db.collection("users").doc(userId).get();
     if (!userDataDoc.exists) {
-      console.log("❌ User not found");
       return res.status(404).json({ error: "User not found" });
     }
     const userData = userDataDoc.data();
-
-    console.log("🔵 User data:", {
-      name: userData.name,
-      referralCode: userData.referralCode,
-    });
 
     const batch = db.batch();
 
@@ -219,61 +201,45 @@ module.exports = async (req, res) => {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    console.log("🔵 Committing batch...");
-
     // COMMIT BATCH
     await batch.commit();
 
-    console.log("✅ Batch committed successfully");
-
-    // ✅✅✅ UPDATE REFERRAL CODE AFTER BATCH
+    // ✅ UPDATE REFERRAL CODE AFTER BATCH (CRITICAL FIX)
     if (userData.referralCode) {
       try {
-        console.log("🔵 Updating referral code:", userData.referralCode);
+        console.log(`🔄 Updating referral code: ${userData.referralCode}`);
 
         const referralCodeRef = db
           .collection("referralCodes")
           .doc(userData.referralCode);
 
-        const updateData = {
-          userId: userId,
-          userName: requestData.userName || userData.name,
-          isActive: true,
-          updatedAt: FieldValue.serverTimestamp(),
-        };
+        await referralCodeRef.set(
+          {
+            userId: userId,
+            userName: requestData.userName || userData.name,
+            isActive: true,
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
 
-        console.log("🔵 Referral code update data:", updateData);
-
-        await referralCodeRef.set(updateData, { merge: true });
-
-        console.log("✅ Referral code updated successfully");
-
-        // Verify the update
-        const verifyDoc = await referralCodeRef.get();
-        const verifyData = verifyDoc.data();
-
-        console.log("🔵 Verification - referral code data:", verifyData);
-        console.log("🔵 Verification - isActive:", verifyData?.isActive);
-        console.log("🔵 Verification - userName:", verifyData?.userName);
+        console.log(
+          `✅ Referral code ${userData.referralCode} updated successfully`
+        );
       } catch (refError) {
-        console.error("❌ Failed to update referral code:", refError);
-        console.error("❌ Error details:", {
-          code: refError.code,
-          message: refError.message,
-        });
+        console.error(`❌ Failed to update referral code:`, refError);
+        // Don't fail the whole operation
       }
     } else {
-      console.warn("⚠️ No referral code found for user");
+      console.warn(`⚠️ User ${userId} has no referral code`);
     }
-
-    console.log("✅ Activation approval complete");
 
     return res.status(200).json({
       success: true,
       message: "Activation approved successfully",
     });
   } catch (error) {
-    console.error("❌ Approve activation error:", error);
+    console.error("Approve activation error:", error);
     return res.status(500).json({
       error: error.message || "Failed to approve activation",
     });

@@ -4,12 +4,16 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
 async function callAPI(endpoint, data) {
   try {
+    console.log(`🚀 Calling API: ${endpoint}`, data); // ✅ ADD THIS
+
     const currentUser = auth.currentUser;
     if (!currentUser) {
       throw new Error("Not authenticated");
     }
 
     const token = await currentUser.getIdToken();
+
+    console.log(`📡 Making request to: ${API_BASE_URL}/${endpoint}`); // ✅ ADD THIS
 
     const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
       method: "POST",
@@ -20,7 +24,10 @@ async function callAPI(endpoint, data) {
       body: JSON.stringify(data),
     });
 
+    console.log(`📥 Response status:`, response.status); // ✅ ADD THIS
+
     const result = await response.json();
+    console.log(`📦 Response data:`, result); // ✅ ADD THIS
 
     if (!response.ok) {
       throw new Error(result.error || "API request failed");
@@ -38,6 +45,8 @@ export const submitActivationRequest = async (utrNumber) => {
 };
 
 export const approveActivation = async (requestId) => {
+  console.log(`✅ approveActivation called with requestId:`, requestId); // ✅ ADD THIS
+
   return callAPI("approveActivation", { requestId });
 };
 
