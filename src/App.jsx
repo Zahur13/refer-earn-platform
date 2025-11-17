@@ -33,6 +33,7 @@ import Sidebar from "./components/layout/Sidebar";
 // User Components
 import UserDashboard from "./components/user/UserDashboard";
 // import AddMoney from "./components/user/AddMoney";
+import Support from "./components/user/Support";
 import WithdrawalRequest from "./components/user/WithdrawalRequest";
 import ReferralStats from "./components/user/ReferralStats";
 import TransactionHistory from "./components/user/TransactionHistory";
@@ -105,7 +106,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/user/withdraw"
         element={
@@ -136,6 +136,16 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* // Inside your routes */}
+      <Route
+        path="/user/support"
+        element={
+          <ProtectedRoute>
+            <Support />
+          </ProtectedRoute>
+        }
+      />
       {/* Admin Routes */}
       <Route
         path="/admin/activations"
@@ -157,7 +167,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/admin/users"
         element={
@@ -198,7 +207,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/admin/earnings"
         element={

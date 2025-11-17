@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
       .collection("activationRequests")
       .add(activationData);
     // console.log("✅ Activation request created with ID:", docRef.id);
-
+    
     // Send notification to user
     try {
       await db.collection("notifications").add({

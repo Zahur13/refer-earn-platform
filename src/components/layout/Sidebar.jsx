@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import {
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   Gift,
   Activity,
 } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const { isAdmin } = useAuth();
@@ -69,6 +71,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
               <span className="font-medium">{item.name}</span>
             </NavLink>
           ))}
+          <Link
+            to="/user/support"
+            className="flex items-center px-4 py-3 space-x-3 rounded-lg transition hover:bg-gray-100"
+          >
+            <MessageCircle className="w-5 h-5" />
+            <span>Support</span>
+          </Link>
         </nav>
       </aside>
     </>
