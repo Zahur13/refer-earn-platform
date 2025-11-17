@@ -352,7 +352,7 @@ const ActivateAccount = () => {
         </h3>
 
         <form onSubmit={handleSubmitPayment} className="space-y-4">
-          <div className="p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex justify-between items-center p-4 mb-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
@@ -367,12 +367,16 @@ const ActivateAccount = () => {
                 </ul>
               </div>
             </div>
+            <div>
+              <img className="w-60" src="/upi.png" alt="" />
+            </div>
           </div>
 
           <div>
             <label className="block mb-2 text-sm font-medium text-gray-700">
               UTR / Transaction ID <span className="text-red-500">*</span>
             </label>
+
             <input
               type="text"
               value={utrNumber}
