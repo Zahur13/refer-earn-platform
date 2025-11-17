@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { MessageCircle } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import {
   LayoutDashboard,
@@ -13,7 +14,6 @@ import {
   Gift,
   Activity,
 } from "lucide-react";
-import { MessageCircle } from "lucide-react";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const { isAdmin } = useAuth();
