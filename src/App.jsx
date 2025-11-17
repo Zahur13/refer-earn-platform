@@ -46,6 +46,7 @@ import AdminTransactions from "./components/admin/AdminTransactions";
 import AdminStats from "./components/admin/AdminStats";
 import AdminEarnings from "./components/admin/AdminEarnings";
 import AdminActivations from "./components/admin/AdminActivations";
+import AdminSupport from "./components/admin/AdminSupport";
 
 // Shared
 import LoadingSpinner from "./components/shared/LoadingSpinner";
@@ -148,6 +149,14 @@ const AppRoutes = () => {
       />
       {/* Admin Routes */}
       <Route
+        path="/admin/support"
+        element={
+          <ProtectedRoute>
+            <AdminSupport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/activations"
         element={
           <ProtectedRoute adminOnly>
@@ -227,6 +236,15 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/admin/support"
+        element={
+          <ProtectedRoute>
+            <AdminSupport />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Default Redirect */}
       <Route path="/" element={<Navigate to="/login" />} />
       <Route path="*" element={<Navigate to="/login" />} />

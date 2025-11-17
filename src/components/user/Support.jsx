@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { auth } from "../../firebase/config";
 import {
   MessageCircle,
   Mail,
@@ -34,10 +35,13 @@ const Support = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/sendSupportEmail", {
+      const token = await auth.currentUser.getIdToken();
+
+      const response = await fetch("/api/submitSupportTicket", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           userName: userData.name,
@@ -76,8 +80,8 @@ const Support = () => {
             <MessageCircle className="w-8 h-8" />
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-bold">Support & Help</h2>
-            <p className="text-primary-100">We're here to help you</p>
+            <h2 className="text-2xl font-bold">Need Help?</h2>
+            <p className="text-primary-100">We're here to assist you</p>
           </div>
         </div>
       </div>
@@ -159,19 +163,22 @@ const Support = () => {
                   <CheckCircle className="w-10 h-10 text-green-600" />
                 </div>
                 <h3 className="mb-2 text-2xl font-bold text-gray-900">
-                  Message Sent Successfully!
+                  Request Submitted!
                 </h3>
-                <p className="mb-4 text-gray-600">
-                  Thank you for contacting us. We've received your message and
-                  will respond within 24 hours.
+                <p className="mb-2 text-gray-600">
+                  Thank you for contacting us. We've received your message.
                 </p>
-                <p className="text-sm text-gray-500">
-                  You'll receive our response at:{" "}
+                <p className="mb-4 text-sm text-gray-500">
+                  ✅ Email sent to:{" "}
+                  <strong>refernearnplatform@gmail.com</strong>
+                  <br />
+                  ✅ Admin notification created
+                  <br />✅ You'll receive a response at:{" "}
                   <strong>{userData?.email}</strong>
                 </p>
                 <button
                   onClick={() => setSubmitted(false)}
-                  className="mt-6 btn-primary"
+                  className="mt-4 btn-primary"
                 >
                   Send Another Message
                 </button>
@@ -247,9 +254,13 @@ const Support = () => {
                   {/* Info Box */}
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-sm text-blue-800">
-                      <strong>💡 Tip:</strong> Please provide as much detail as
-                      possible to help us resolve your issue faster.
+                      <strong>📧 What happens next:</strong>
                     </p>
+                    <ul className="mt-2 space-y-1 text-sm text-blue-700">
+                      <li>✓ Email sent to support team</li>
+                      <li>✓ Admin panel notification created</li>
+                      <li>✓ Response within 24 hours</li>
+                    </ul>
                   </div>
 
                   {/* Submit Button */}

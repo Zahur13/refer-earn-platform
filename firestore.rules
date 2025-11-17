@@ -106,5 +106,22 @@ service cloud.firestore {
       allow delete: if false;
     
     }
+
+ //===========User Feedback + Email + Admin Panel============
+
+    match /supportTickets/{ticketId} {
+      allow read: if isSignedIn() && 
+                    (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isSignedIn() && 
+                      request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+
+
   }
 }
+
+
+   

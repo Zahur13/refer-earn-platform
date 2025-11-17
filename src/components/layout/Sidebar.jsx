@@ -1,7 +1,5 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Link } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import {
   LayoutDashboard,
@@ -10,9 +8,9 @@ import {
   TrendingUp,
   History,
   DollarSign,
-  Settings,
   Gift,
   Activity,
+  MessageCircle,
 } from "lucide-react";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -23,6 +21,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Withdraw", icon: DollarSign, path: "/user/withdraw" },
     { name: "Referrals", icon: Users, path: "/user/referrals" },
     { name: "Transactions", icon: History, path: "/user/transactions" },
+    { name: "Support", icon: MessageCircle, path: "/user/support" }, // ✅ Added for users
   ];
 
   const adminMenuItems = [
@@ -33,6 +32,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Activations", icon: Gift, path: "/admin/activations" },
     { name: "Statistics", icon: TrendingUp, path: "/admin/stats" },
     { name: "My Earnings", icon: Wallet, path: "/admin/earnings" },
+    { name: "Support Tickets", icon: MessageCircle, path: "/admin/support" }, // ✅ Added for admin
   ];
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
@@ -71,13 +71,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
               <span className="font-medium">{item.name}</span>
             </NavLink>
           ))}
-          <Link
-            to="/user/support"
-            className="flex items-center px-4 py-3 space-x-3 rounded-lg transition hover:bg-gray-100"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span>Support</span>
-          </Link>
         </nav>
       </aside>
     </>
