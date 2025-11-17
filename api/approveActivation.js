@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
     const decodedToken = await verifyAuth(req);
     const adminUserId = decodedToken.uid;
 
-    console.log("🔵 Admin user ID:", adminUserId);
+    // console.log("🔵 Admin user ID:", adminUserId);
 
     // Verify admin role
     const adminDoc = await db.collection("users").doc(adminUserId).get();
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Request ID is required" });
     }
 
-    console.log("🔵 Request ID:", requestId);
+    // console.log("🔵 Request ID:", requestId);
 
     // Get activation request
     const requestDoc = await db
@@ -66,15 +66,15 @@ module.exports = async (req, res) => {
     const requestData = requestDoc.data();
 
     if (requestData.status !== "PENDING") {
-      console.log("❌ Request already processed:", requestData.status);
+      // console.log("❌ Request already processed:", requestData.status);
       return res.status(400).json({ error: "Request already processed" });
     }
 
     const userId = requestData.userId;
     const hasReferrer = requestData.hasReferrer;
 
-    console.log("🔵 User ID:", userId);
-    console.log("🔵 Has referrer:", hasReferrer);
+    // console.log("🔵 User ID:", userId);
+    // console.log("🔵 Has referrer:", hasReferrer);
 
     let userCredit = 0;
     let referrerBonus = 0;
@@ -98,10 +98,10 @@ module.exports = async (req, res) => {
     }
     const userData = userDataDoc.data();
 
-    console.log("🔵 User data:", {
-      name: userData.name,
-      referralCode: userData.referralCode,
-    });
+    // console.log("🔵 User data:", {
+    //   name: userData.name,
+    //   referralCode: userData.referralCode,
+    // });
 
     const batch = db.batch();
 
@@ -229,7 +229,7 @@ module.exports = async (req, res) => {
     // ✅✅✅ UPDATE REFERRAL CODE AFTER BATCH
     if (userData.referralCode) {
       try {
-        console.log("🔵 Updating referral code:", userData.referralCode);
+        // console.log("🔵 Updating referral code:", userData.referralCode);
 
         const referralCodeRef = db
           .collection("referralCodes")
@@ -242,19 +242,19 @@ module.exports = async (req, res) => {
           updatedAt: FieldValue.serverTimestamp(),
         };
 
-        console.log("🔵 Referral code update data:", updateData);
+        // console.log("🔵 Referral code update data:", updateData);
 
         await referralCodeRef.set(updateData, { merge: true });
 
-        console.log("✅ Referral code updated successfully");
+        // console.log("✅ Referral code updated successfully");
 
         // Verify the update
         const verifyDoc = await referralCodeRef.get();
         const verifyData = verifyDoc.data();
 
-        console.log("🔵 Verification - referral code data:", verifyData);
-        console.log("🔵 Verification - isActive:", verifyData?.isActive);
-        console.log("🔵 Verification - userName:", verifyData?.userName);
+        // console.log("🔵 Verification - referral code data:", verifyData);
+        // console.log("🔵 Verification - isActive:", verifyData?.isActive);
+        // console.log("🔵 Verification - userName:", verifyData?.userName);
       } catch (refError) {
         console.error("❌ Failed to update referral code:", refError);
         console.error("❌ Error details:", {

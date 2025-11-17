@@ -32,11 +32,11 @@ import Sidebar from "./components/layout/Sidebar";
 
 // User Components
 import UserDashboard from "./components/user/UserDashboard";
-// import AddMoney from "./components/user/AddMoney";
 import Support from "./components/user/Support";
 import WithdrawalRequest from "./components/user/WithdrawalRequest";
 import ReferralStats from "./components/user/ReferralStats";
 import TransactionHistory from "./components/user/TransactionHistory";
+import ActivateAccount from "./components/user/ActivateAccount";
 
 // Admin Components
 import AdminDashboard from "./components/admin/AdminDashboard";
@@ -50,7 +50,6 @@ import AdminSupport from "./components/admin/AdminSupport";
 
 // Shared
 import LoadingSpinner from "./components/shared/LoadingSpinner";
-import ActivateAccount from "./components/user/ActivateAccount";
 import { requestNotificationPermission } from "./firebase/notificationService";
 
 const DashboardLayout = ({ children }) => {
@@ -85,6 +84,7 @@ const AppRoutes = () => {
         path="/register"
         element={user ? <Navigate to="/user/dashboard" /> : <Register />}
       />
+
       {/* User Routes */}
       <Route
         path="/user/dashboard"
@@ -96,7 +96,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      {/* NEW: Activate Account Route */}
       <Route
         path="/user/activate"
         element={
@@ -137,36 +136,18 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
-      {/* // Inside your routes */}
       <Route
         path="/user/support"
         element={
           <ProtectedRoute>
-            <Support />
-          </ProtectedRoute>
-        }
-      />
-      {/* Admin Routes */}
-      <Route
-        path="/admin/support"
-        element={
-          <ProtectedRoute>
-            <AdminSupport />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin/activations"
-        element={
-          <ProtectedRoute adminOnly>
             <DashboardLayout>
-              <AdminActivations />
+              <Support />
             </DashboardLayout>
           </ProtectedRoute>
         }
       />
+
+      {/* Admin Routes */}
       <Route
         path="/admin/dashboard"
         element={
@@ -237,11 +218,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      {/* ✅ FIXED: Added DashboardLayout wrapper and adminOnly prop */}
       <Route
         path="/admin/support"
         element={
-          <ProtectedRoute>
-            <AdminSupport />
+          <ProtectedRoute adminOnly>
+            <DashboardLayout>
+              <AdminSupport />
+            </DashboardLayout>
           </ProtectedRoute>
         }
       />
@@ -271,8 +255,8 @@ function App() {
       console.log("🔧 Firebase tools available in console");
     }
   }, []);
+
   useEffect(() => {
-    // Request notification permission on app load
     requestNotificationPermission();
   }, []);
 

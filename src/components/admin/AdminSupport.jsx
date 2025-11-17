@@ -5,9 +5,12 @@ import {
   getDocs,
   doc,
   updateDoc,
+  serverTimestamp,
   query,
   orderBy,
-  serverTimestamp,
+  arrayUnion,
+  addDoc,
+  Timestamp,
 } from "firebase/firestore";
 import {
   MessageCircle,
@@ -16,54 +19,83 @@ import {
   CheckCircle,
   Clock,
   Eye,
-  XCircle,
   Send,
   User,
+  X,
 } from "lucide-react";
 import { formatDate } from "../../utils/helpers";
 import toast from "react-hot-toast";
 
 const AdminSupport = () => {
   const [tickets, setTickets] = useState([]);
+  const [filteredTickets, setFilteredTickets] = useState([]);
   const [filter, setFilter] = useState("PENDING");
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [replyMessage, setReplyMessage] = useState("");
-  const [sendingReply, setSendingReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
 
   useEffect(() => {
     fetchTickets();
   }, []);
 
-  const fetchTickets = async () => {
-    try {
-      console.log("📥 Fetching support tickets...");
+  useEffect(() => {
+    filterTickets();
+  }, [filter, tickets]);
 
+  const fetchTickets = async () => {
+    setLoading(true);
+    try {
       const q = query(
         collection(db, "supportTickets"),
         orderBy("createdAt", "desc")
       );
-
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
 
-      console.log("✅ Fetched tickets:", data.length);
-      setTickets(data);
+      const ticketsData = [];
+      snapshot.forEach((doc) => {
+        ticketsData.push({
+          id: doc.id,
+          ...doc.data(),
+        });
+      });
+
+      setTickets(ticketsData);
+
+      if (ticketsData.length === 0) {
+        toast.info("No support tickets found");
+      }
     } catch (error) {
-      console.error("❌ Error fetching support tickets:", error);
-      toast.error("Failed to load support tickets");
+      toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsResolved = async (ticketId) => {
-    if (!window.confirm("Mark this ticket as resolved?")) {
-      return;
+  const filterTickets = () => {
+    if (filter === "ALL") {
+      setFilteredTickets(tickets);
+    } else {
+      const filtered = tickets.filter((ticket) => ticket.status === filter);
+      setFilteredTickets(filtered);
     }
+  };
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+  };
+
+  const openTicketDetails = (ticket) => {
+    setSelectedTicket(ticket);
+    setReplyText("");
+  };
+
+  const closeTicketDetails = () => {
+    setSelectedTicket(null);
+    setReplyText("");
+  };
+
+  const markAsResolved = async (ticketId) => {
+    if (!confirm("Mark this ticket as resolved?")) return;
 
     try {
       await updateDoc(doc(db, "supportTickets", ticketId), {
@@ -73,93 +105,59 @@ const AdminSupport = () => {
       });
 
       toast.success("Ticket marked as resolved");
-      fetchTickets();
-      setSelectedTicket(null);
+      await fetchTickets();
+      closeTicketDetails();
     } catch (error) {
-      console.error("Error updating ticket:", error);
-      toast.error("Failed to update ticket");
+      toast.error("Failed to resolve ticket");
     }
   };
 
-  const markAsPending = async (ticketId) => {
-    try {
-      await updateDoc(doc(db, "supportTickets", ticketId), {
-        status: "PENDING",
-        updatedAt: serverTimestamp(),
-      });
-
-      toast.success("Ticket marked as pending");
-      fetchTickets();
-    } catch (error) {
-      console.error("Error updating ticket:", error);
-      toast.error("Failed to update ticket");
-    }
-  };
-
-  const sendReplyEmail = async (ticket) => {
-    if (!replyMessage.trim()) {
-      toast.error("Please enter a reply message");
+  const sendReply = async () => {
+    if (!replyText.trim()) {
+      toast.error("Please enter a reply");
       return;
     }
 
-    setSendingReply(true);
+    if (!selectedTicket) return;
 
     try {
-      // Send reply via FormSubmit
-      const formData = new URLSearchParams({
-        _subject: `Re: ${ticket.subject}`,
-        _template: "box",
-        _captcha: "false",
-        To: ticket.userEmail,
-        From: "Refer & Earn Support",
-        TicketID: ticket.id,
-        OriginalSubject: ticket.subject,
-        Reply: replyMessage,
+      const replyData = {
+        message: replyText,
+        sender: "admin",
+        sentAt: Timestamp.now(),
+      };
+
+      await updateDoc(doc(db, "supportTickets", selectedTicket.id), {
+        status: "REPLIED",
+        lastReply: replyText,
+        repliedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        replies: arrayUnion(replyData),
       });
 
-      const response = await fetch(
-        `https://formsubmit.co/ajax/${ticket.userEmail}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
-          },
-          body: formData.toString(),
-        }
-      );
+      const notificationsRef = collection(db, "notifications");
+      await addDoc(notificationsRef, {
+        userId: selectedTicket.userId,
+        type: "SUPPORT_REPLY",
+        title: "Admin Replied to Your Ticket",
+        message: `You have a new reply on: "${selectedTicket.subject}"`,
+        ticketId: selectedTicket.id,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
 
-      const result = await response.json();
-
-      if (result.success === "true" || response.ok) {
-        // Update ticket with reply
-        await updateDoc(doc(db, "supportTickets", ticket.id), {
-          status: "REPLIED",
-          lastReply: replyMessage,
-          repliedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-
-        toast.success("Reply sent successfully!");
-        setReplyMessage("");
-        fetchTickets();
-      } else {
-        throw new Error("Failed to send email");
-      }
+      toast.success("Reply sent! User will see it in their Support panel.");
+      setReplyText("");
+      await fetchTickets();
+      closeTicketDetails();
     } catch (error) {
-      console.error("Error sending reply:", error);
-      toast.error(
-        "Failed to send reply. You can use the 'Reply via Email' button instead."
-      );
-    } finally {
-      setSendingReply(false);
+      toast.error("Failed to send reply");
     }
   };
 
-  const filteredTickets = tickets.filter((t) => {
-    if (filter === "ALL") return true;
-    return t.status === filter;
-  });
+  const pendingCount = tickets.filter((t) => t.status === "PENDING").length;
+  const repliedCount = tickets.filter((t) => t.status === "REPLIED").length;
+  const resolvedCount = tickets.filter((t) => t.status === "RESOLVED").length;
 
   if (loading) {
     return (
@@ -171,25 +169,24 @@ const AdminSupport = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Support Tickets</h1>
-          <p className="mt-1 text-gray-600">Manage user support requests</p>
+          <p className="mt-1 text-gray-600">Total: {tickets.length} tickets</p>
         </div>
         <button onClick={fetchTickets} className="btn-secondary">
           🔄 Refresh
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <div className="bg-yellow-50 border-yellow-200 card">
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-yellow-700">Pending</p>
               <p className="text-3xl font-bold text-yellow-900">
-                {tickets.filter((t) => t.status === "PENDING").length}
+                {pendingCount}
               </p>
             </div>
             <Clock className="w-12 h-12 text-yellow-600" />
@@ -200,9 +197,7 @@ const AdminSupport = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-blue-700">Replied</p>
-              <p className="text-3xl font-bold text-blue-900">
-                {tickets.filter((t) => t.status === "REPLIED").length}
-              </p>
+              <p className="text-3xl font-bold text-blue-900">{repliedCount}</p>
             </div>
             <Send className="w-12 h-12 text-blue-600" />
           </div>
@@ -213,7 +208,7 @@ const AdminSupport = () => {
             <div>
               <p className="text-sm text-green-700">Resolved</p>
               <p className="text-3xl font-bold text-green-900">
-                {tickets.filter((t) => t.status === "RESOLVED").length}
+                {resolvedCount}
               </p>
             </div>
             <CheckCircle className="w-12 h-12 text-green-600" />
@@ -233,18 +228,50 @@ const AdminSupport = () => {
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Filter Buttons */}
       <div className="card">
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full input-field md:w-64"
-        >
-          <option value="PENDING">Pending Tickets</option>
-          <option value="REPLIED">Replied Tickets</option>
-          <option value="RESOLVED">Resolved Tickets</option>
-          <option value="ALL">All Tickets</option>
-        </select>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => handleFilterChange("PENDING")}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              filter === "PENDING"
+                ? "bg-yellow-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Pending ({pendingCount})
+          </button>
+          <button
+            onClick={() => handleFilterChange("REPLIED")}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              filter === "REPLIED"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Replied ({repliedCount})
+          </button>
+          <button
+            onClick={() => handleFilterChange("RESOLVED")}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              filter === "RESOLVED"
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Resolved ({resolvedCount})
+          </button>
+          <button
+            onClick={() => handleFilterChange("ALL")}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              filter === "ALL"
+                ? "bg-purple-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            All ({tickets.length})
+          </button>
+        </div>
       </div>
 
       {/* Tickets List */}
@@ -252,21 +279,17 @@ const AdminSupport = () => {
         {filteredTickets.length === 0 ? (
           <div className="py-12 text-center card">
             <MessageCircle className="mx-auto mb-4 w-16 h-16 text-gray-300" />
-            <p className="text-gray-500">No support tickets found</p>
-            <p className="mt-2 text-sm text-gray-400">
-              {filter === "PENDING"
-                ? "No pending tickets at the moment"
-                : `No ${filter.toLowerCase()} tickets`}
+            <p className="text-gray-500">
+              No {filter.toLowerCase()} tickets found
             </p>
           </div>
         ) : (
           filteredTickets.map((ticket) => (
-            <div key={ticket.id} className="transition card hover:shadow-xl">
+            <div key={ticket.id} className="transition card hover:shadow-lg">
               <div className="flex flex-col justify-between lg:flex-row">
                 <div className="flex-1 space-y-3">
-                  {/* Header */}
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
+                    <div>
                       <div className="flex items-center mb-1 space-x-2">
                         <h3 className="text-xl font-bold text-gray-900">
                           {ticket.subject}
@@ -285,79 +308,49 @@ const AdminSupport = () => {
                       </div>
                       <div className="flex items-center space-x-2 text-gray-600">
                         <User className="w-4 h-4" />
-                        <span className="font-medium">{ticket.userName}</span>
+                        <span>{ticket.userName}</span>
                       </div>
                       <p className="text-sm text-gray-500">
-                        Submitted: {formatDate(ticket.createdAt)}
-                      </p>
-                      {ticket.repliedAt && (
-                        <p className="text-sm text-blue-600">
-                          Replied: {formatDate(ticket.repliedAt)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">Ticket ID</p>
-                      <p className="font-mono text-sm text-gray-700">
-                        {ticket.id.substring(0, 8)}
+                        {formatDate(ticket.createdAt)}
                       </p>
                     </div>
                   </div>
 
-                  {/* User Contact Info */}
-                  <div className="grid grid-cols-1 gap-3 p-3 text-sm bg-gray-50 rounded-lg sm:grid-cols-2">
+                  <div className="flex flex-wrap gap-4 text-sm">
                     <div className="flex items-center space-x-2">
-                      <Mail className="flex-shrink-0 w-4 h-4 text-gray-500" />
+                      <Mail className="w-4 h-4 text-gray-500" />
                       <a
                         href={`mailto:${ticket.userEmail}`}
-                        className="break-all text-primary-600 hover:text-primary-700"
+                        className="text-primary-600 hover:text-primary-700"
                       >
                         {ticket.userEmail}
                       </a>
                     </div>
                     {ticket.userPhone && (
                       <div className="flex items-center space-x-2">
-                        <Phone className="flex-shrink-0 w-4 h-4 text-gray-500" />
-                        <a
-                          href={`tel:${ticket.userPhone}`}
-                          className="text-gray-700 hover:text-primary-600"
-                        >
+                        <Phone className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-700">
                           {ticket.userPhone}
-                        </a>
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Message Preview */}
                   <div className="p-3 bg-blue-50 rounded border-l-4 border-blue-600">
                     <p className="text-sm text-gray-700 line-clamp-2">
                       {ticket.message}
                     </p>
                   </div>
-
-                  {/* Last Reply Preview */}
-                  {ticket.lastReply && (
-                    <div className="p-3 bg-green-50 rounded border-l-4 border-green-600">
-                      <p className="mb-1 text-xs font-semibold text-green-800">
-                        Last Reply:
-                      </p>
-                      <p className="text-sm text-gray-700 line-clamp-2">
-                        {ticket.lastReply}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-3 mt-4 lg:ml-6 lg:mt-0 lg:flex-col lg:w-48">
+                <div className="flex gap-3 mt-4 lg:mt-0 lg:ml-6 lg:flex-col lg:w-48">
                   <button
-                    onClick={() => setSelectedTicket(ticket)}
+                    onClick={() => openTicketDetails(ticket)}
                     className="flex flex-1 justify-center items-center btn-primary"
                   >
                     <Eye className="mr-2 w-4 h-4" />
                     View Details
                   </button>
-
                   {ticket.status !== "RESOLVED" && (
                     <button
                       onClick={() => markAsResolved(ticket.id)}
@@ -365,16 +358,6 @@ const AdminSupport = () => {
                     >
                       <CheckCircle className="mr-2 w-4 h-4" />
                       Resolve
-                    </button>
-                  )}
-
-                  {ticket.status === "RESOLVED" && (
-                    <button
-                      onClick={() => markAsPending(ticket.id)}
-                      className="flex flex-1 justify-center items-center px-4 py-2 text-white bg-yellow-600 rounded-lg transition hover:bg-yellow-700"
-                    >
-                      <Clock className="mr-2 w-4 h-4" />
-                      Reopen
                     </button>
                   )}
                 </div>
@@ -389,11 +372,10 @@ const AdminSupport = () => {
         <div className="flex fixed inset-0 z-50 justify-center items-center p-4 bg-black bg-opacity-50">
           <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              {/* Modal Header */}
               <div className="flex justify-between items-start mb-6">
-                <div className="flex-1">
+                <div>
                   <h3 className="mb-2 text-2xl font-bold text-gray-900">
-                    Ticket Details
+                    {selectedTicket.subject}
                   </h3>
                   <div className="flex items-center space-x-2">
                     <span
@@ -408,195 +390,212 @@ const AdminSupport = () => {
                       {selectedTicket.status}
                     </span>
                     <span className="text-sm text-gray-500">
-                      ID: {selectedTicket.id.substring(0, 12)}
+                      Ticket #{selectedTicket.id.substring(0, 8)}
                     </span>
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    setSelectedTicket(null);
-                    setReplyMessage("");
-                  }}
-                  className="text-2xl text-gray-500 hover:text-gray-700"
+                  onClick={closeTicketDetails}
+                  className="text-2xl font-bold text-gray-500 hover:text-gray-700"
                 >
-                  ×
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="space-y-6">
-                {/* Ticket Info */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600">
-                      Subject
-                    </label>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {selectedTicket.subject}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600">
-                      Submitted
-                    </label>
-                    <p className="font-semibold text-gray-900">
-                      {formatDate(selectedTicket.createdAt)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* User Info */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600">
-                      Name
-                    </label>
-                    <p className="font-semibold text-gray-900">
-                      {selectedTicket.userName}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600">
-                      Email
-                    </label>
-                    <p className="font-semibold text-gray-900 break-all">
-                      <a
-                        href={`mailto:${selectedTicket.userEmail}`}
-                        className="text-primary-600 hover:text-primary-700"
-                      >
-                        {selectedTicket.userEmail}
-                      </a>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600">
-                      Phone
-                    </label>
-                    <p className="font-semibold text-gray-900">
-                      {selectedTicket.userPhone || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Message */}
+              <div className="grid grid-cols-1 gap-4 p-4 mb-6 bg-gray-50 rounded-lg sm:grid-cols-3">
                 <div>
-                  <label className="block mb-2 text-sm font-semibold text-gray-700">
-                    Message
+                  <label className="text-xs font-semibold text-gray-600 uppercase">
+                    Name
                   </label>
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="leading-relaxed text-gray-800 whitespace-pre-wrap">
-                      {selectedTicket.message}
+                  <p className="mt-1 font-semibold text-gray-900">
+                    {selectedTicket.userName}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 uppercase">
+                    Email
+                  </label>
+                  <p className="mt-1 font-semibold text-gray-900 break-all">
+                    <a
+                      href={`mailto:${selectedTicket.userEmail}`}
+                      className="text-primary-600 hover:text-primary-700"
+                    >
+                      {selectedTicket.userEmail}
+                    </a>
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 uppercase">
+                    Phone
+                  </label>
+                  <p className="mt-1 font-semibold text-gray-900">
+                    {selectedTicket.userPhone || "Not provided"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 mb-6 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>📅 Submitted:</strong>{" "}
+                  {formatDate(selectedTicket.createdAt)}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block mb-2 text-sm font-semibold text-gray-700 uppercase">
+                  User's Message
+                </label>
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-l-4 border-blue-600">
+                  <p className="leading-relaxed text-gray-800 whitespace-pre-wrap">
+                    {selectedTicket.message}
+                  </p>
+                </div>
+              </div>
+
+              {selectedTicket.lastReply && (
+                <div className="mb-6">
+                  <label className="block mb-2 text-sm font-semibold text-gray-700 uppercase">
+                    Your Last Reply
+                    <span className="ml-2 text-xs text-gray-500 normal-case">
+                      (Sent on {formatDate(selectedTicket.repliedAt)})
+                    </span>
+                  </label>
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-l-4 border-green-600">
+                    <p className="text-gray-800 whitespace-pre-wrap">
+                      {selectedTicket.lastReply}
                     </p>
                   </div>
                 </div>
+              )}
 
-                {/* Last Reply */}
-                {selectedTicket.lastReply && (
-                  <div>
-                    <label className="block mb-2 text-sm font-semibold text-gray-700">
-                      Your Last Reply
-                      <span className="ml-2 text-xs text-gray-500">
-                        ({formatDate(selectedTicket.repliedAt)})
-                      </span>
-                    </label>
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <p className="leading-relaxed text-gray-800 whitespace-pre-wrap">
-                        {selectedTicket.lastReply}
-                      </p>
+              <div className="my-6 border-t border-gray-200"></div>
+
+              {selectedTicket.status !== "RESOLVED" && (
+                <div className="space-y-6">
+                  <h4 className="text-lg font-bold text-gray-900">
+                    Reply to User
+                  </h4>
+
+                  <div className="p-5 rounded-lg border border-primary-200 bg-primary-50">
+                    <div className="flex items-start mb-3 space-x-3">
+                      <div className="p-2 rounded-lg bg-primary-600">
+                        <Send className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-900">
+                          Option 1: Quick Reply
+                        </h5>
+                        <p className="text-sm text-gray-600">
+                          Send reply directly (user sees in Support panel)
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                {/* Reply Section */}
-                {selectedTicket.status !== "RESOLVED" && (
-                  <div>
-                    <label className="block mb-2 text-sm font-semibold text-gray-700">
-                      Send Reply
-                    </label>
                     <textarea
-                      value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      className="resize-none input-field"
-                      rows="6"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="mb-3 w-full resize-none input-field"
+                      rows="5"
                       placeholder="Type your reply here..."
                     />
+
                     <button
-                      onClick={() => sendReplyEmail(selectedTicket)}
-                      disabled={sendingReply || !replyMessage.trim()}
-                      className="mt-3 w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={sendReply}
+                      disabled={!replyText.trim()}
+                      className="flex justify-center items-center w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {sendingReply ? (
-                        <span className="flex justify-center items-center">
-                          <svg
-                            className="mr-3 -ml-1 w-5 h-5 text-white animate-spin"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Sending...
-                        </span>
-                      ) : (
-                        <span className="flex justify-center items-center">
-                          <Send className="mr-2 w-4 h-4" />
-                          Send Reply via Email
-                        </span>
-                      )}
+                      <Send className="mr-2 w-4 h-4" />
+                      Send Quick Reply
                     </button>
+
+                    <p className="mt-2 text-xs text-gray-500">
+                      ✓ Reply appears in user's Support panel
+                    </p>
                   </div>
-                )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-4 border-t">
-                  <a
-                    href={`mailto:${
-                      selectedTicket.userEmail
-                    }?subject=Re: ${encodeURIComponent(
-                      selectedTicket.subject
-                    )}&body=Hi ${
-                      selectedTicket.userName
-                    },%0D%0A%0D%0AThank you for contacting us.%0D%0A%0D%0ARegarding your query: "${
-                      selectedTicket.subject
-                    }"%0D%0A%0D%0A`}
-                    className="flex flex-1 justify-center items-center text-center btn-secondary"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Mail className="mr-2 w-4 h-4" />
-                    Open in Email Client
-                  </a>
+                  <div className="p-5 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-start mb-3 space-x-3">
+                      <div className="p-2 bg-gray-600 rounded-lg">
+                        <Mail className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-900">
+                          Option 2: Use Your Email Client
+                        </h5>
+                        <p className="text-sm text-gray-600">
+                          Opens Gmail/Outlook with pre-filled recipient
+                        </p>
+                      </div>
+                    </div>
 
-                  {selectedTicket.status === "PENDING" ||
-                  selectedTicket.status === "REPLIED" ? (
-                    <button
-                      onClick={() => markAsResolved(selectedTicket.id)}
-                      className="flex flex-1 justify-center items-center px-4 py-2 text-white bg-green-600 rounded-lg transition hover:bg-green-700"
+                    <a
+                      href={`mailto:${
+                        selectedTicket.userEmail
+                      }?subject=Re: ${encodeURIComponent(
+                        selectedTicket.subject
+                      )}&body=Hi ${
+                        selectedTicket.userName
+                      },%0D%0A%0D%0AThank you for contacting Refer & Earn Support.%0D%0A%0D%0ARegarding your query: "${
+                        selectedTicket.subject
+                      }"%0D%0A%0D%0A[Type your response here]%0D%0A%0D%0ABest regards,%0D%0ARefer & Earn Support Team`}
+                      className="flex justify-center items-center w-full text-center btn-secondary"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <CheckCircle className="mr-2 w-4 h-4" />
-                      Mark as Resolved
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => markAsPending(selectedTicket.id)}
-                      className="flex flex-1 justify-center items-center px-4 py-2 text-white bg-yellow-600 rounded-lg transition hover:bg-yellow-700"
-                    >
-                      <Clock className="mr-2 w-4 h-4" />
-                      Reopen Ticket
-                    </button>
+                      <Mail className="mr-2 w-4 h-4" />
+                      Open in Email Client
+                    </a>
+
+                    <p className="mt-2 text-xs text-gray-500">
+                      ℹ️ Opens your default email app
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedTicket.status === "RESOLVED" && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2 text-green-800">
+                    <CheckCircle className="w-5 h-5" />
+                    <p className="font-semibold">
+                      This ticket has been resolved
+                    </p>
+                  </div>
+                  {selectedTicket.resolvedAt && (
+                    <p className="mt-1 text-sm text-green-700">
+                      Resolved on: {formatDate(selectedTicket.resolvedAt)}
+                    </p>
                   )}
                 </div>
+              )}
+
+              <div className="my-6 border-t border-gray-200"></div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {selectedTicket.status !== "RESOLVED" ? (
+                  <>
+                    <button
+                      onClick={() => markAsResolved(selectedTicket.id)}
+                      className="flex flex-1 justify-center items-center px-4 py-3 font-semibold text-white bg-green-600 rounded-lg transition hover:bg-green-700"
+                    >
+                      <CheckCircle className="mr-2 w-5 h-5" />
+                      Mark as Resolved
+                    </button>
+                    <button
+                      onClick={closeTicketDetails}
+                      className="flex flex-1 justify-center items-center px-4 py-3 font-semibold text-white bg-gray-600 rounded-lg transition hover:bg-gray-700"
+                    >
+                      Close
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={closeTicketDetails}
+                    className="flex justify-center items-center px-4 py-3 w-full font-semibold text-white rounded-lg transition bg-primary-600 hover:bg-primary-700"
+                  >
+                    Close
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -27,7 +27,7 @@ export const createNotification = async (userId, notificationData) => {
       createdAt: serverTimestamp(),
     });
 
-    console.log("✅ Notification created for user:", userId);
+    // console.log("✅ Notification created for user:", userId);
 
     // Request browser notification permission and show
     if ("Notification" in window && Notification.permission === "granted") {

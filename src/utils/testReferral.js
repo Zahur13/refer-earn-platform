@@ -16,7 +16,7 @@ export const testReferralCode = async (code) => {
       return false;
     }
 
-    console.log("✅ Code found:", codeSnap.data());
+    // console.log("✅ Code found:", codeSnap.data());
 
     // Check if user exists
     const userId = codeSnap.data().userId;
@@ -28,7 +28,7 @@ export const testReferralCode = async (code) => {
       return false;
     }
 
-    console.log("✅ User found:", userSnap.data());
+    // console.log("✅ User found:", userSnap.data());
 
     if (!userSnap.data().isReferralActive) {
       console.log("⚠️ User account not active");
@@ -49,7 +49,7 @@ export const createTestUserWithReferral = async () => {
     const testEmail = `test${Date.now()}@example.com`;
     const testPassword = "test123";
 
-    console.log("Creating test user:", testEmail);
+    // console.log("Creating test user:", testEmail);
 
     // Create auth user
     const userCredential = await createUserWithEmailAndPassword(
@@ -91,9 +91,9 @@ export const createTestUserWithReferral = async () => {
     });
 
     console.log("✅ Test user created!");
-    console.log("Email:", testEmail);
-    console.log("Password:", testPassword);
-    console.log("Referral Code:", referralCode);
+    // console.log("Email:", testEmail);
+    // console.log("Password:", testPassword);
+    //  console.log("Referral Code:", referralCode);
 
     return { email: testEmail, password: testPassword, referralCode };
   } catch (error) {

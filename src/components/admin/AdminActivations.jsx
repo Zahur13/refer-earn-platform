@@ -45,7 +45,7 @@ const AdminActivations = () => {
         ...doc.data(),
       }));
 
-      console.log("✅ Fetched activation requests:", data.length);
+      // console.log("✅ Fetched activation requests:", data.length);
 
       setActivationRequests(data);
     } catch (error) {
@@ -78,7 +78,7 @@ const AdminActivations = () => {
     setProcessing(request.id);
 
     try {
-      console.log("✅ Approving activation:", request.id);
+      // console.log("✅ Approving activation:", request.id);
       const result = await approveActivation(request.id);
 
       toast.success(result.message);
