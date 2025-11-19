@@ -419,7 +419,7 @@ exports.approveActivation = functions.https.onCall(async (data, context) => {
           { merge: true }
         );
 
-        console.log(`✅ Referral code ${userData.referralCode} activated`);
+        // console.log(`✅ Referral code ${userData.referralCode} activated`);
       } catch (refError) {
         console.error(`❌ Failed to update referral code:`, refError);
       }

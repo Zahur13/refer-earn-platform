@@ -207,7 +207,7 @@ module.exports = async (req, res) => {
     // ✅ UPDATE REFERRAL CODE AFTER BATCH (CRITICAL FIX)
     if (userData.referralCode) {
       try {
-        console.log(`🔄 Updating referral code: ${userData.referralCode}`);
+        // console.log(`🔄 Updating referral code: ${userData.referralCode}`);
 
         const referralCodeRef = db
           .collection("referralCodes")

@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
 
     await sgMail.send(msg);
 
-    console.log(`✅ Support email sent from ${userName}`);
+    // console.log(`✅ Support email sent from ${userName}`);
 
     return res.status(200).json({
       success: true,

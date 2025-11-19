@@ -21,7 +21,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Withdraw", icon: DollarSign, path: "/user/withdraw" },
     { name: "Referrals", icon: Users, path: "/user/referrals" },
     { name: "Transactions", icon: History, path: "/user/transactions" },
-    { name: "Support", icon: MessageCircle, path: "/user/support" }, // ✅ Added for users
+    { name: "Support", icon: MessageCircle, path: "/user/support" },
   ];
 
   const adminMenuItems = [
@@ -32,7 +32,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Activations", icon: Gift, path: "/admin/activations" },
     { name: "Statistics", icon: TrendingUp, path: "/admin/stats" },
     { name: "My Earnings", icon: Wallet, path: "/admin/earnings" },
-    { name: "Support Tickets", icon: MessageCircle, path: "/admin/support" }, // ✅ Added for admin
+    { name: "Support Tickets", icon: MessageCircle, path: "/admin/support" },
   ];
 
   const menuItems = isAdmin ? adminMenuItems : userMenuItems;
@@ -49,7 +49,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 z-30 transition-transform duration-300 ${
+        className={`fixed lg:sticky top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-30 transition-all duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -60,10 +60,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
               to={item.path}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center space-x-3 px-4 py-3 rounded-lg transition ${
+                `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   isActive
-                    ? "bg-primary-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-primary-600 text-white shadow-lg shadow-primary-600/30"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`
               }
             >

@@ -21,6 +21,9 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+// Splash Screen
+import SplashScreen from "./components/shared/SplashScreen";
+
 // Auth Components
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
@@ -218,7 +221,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      {/* ✅ FIXED: Added DashboardLayout wrapper and adminOnly prop */}
       <Route
         path="/admin/support"
         element={
@@ -238,6 +240,8 @@ const AppRoutes = () => {
 };
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       window.db = db;
@@ -252,13 +256,22 @@ function App() {
       window.where = where;
       window.increment = increment;
       window.serverTimestamp = serverTimestamp;
-      console.log("🔧 Firebase tools available in console");
     }
   }, []);
 
   useEffect(() => {
     requestNotificationPermission();
   }, []);
+
+  // Handle splash screen finish
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  // Show splash screen on first load
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />;
+  }
 
   return (
     <Router>

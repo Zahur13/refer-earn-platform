@@ -17,7 +17,7 @@ async function testEmail() {
       html: "<h1>Test successful!</h1>",
     });
 
-    console.log("✅ Email sent:", info.messageId);
+    // console.log("✅ Email sent:", info.messageId);
   } catch (error) {
     console.error("❌ Email error:", error);
   }
